@@ -1,0 +1,23 @@
+# Local Postgres for development. Run: docker compose up -d
+# Then: npm run db:push && npm run db:seed
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: trialtree-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: trialtree
+      POSTGRES_PASSWORD: trialtree
+      POSTGRES_DB: trialtree
+    ports:
+      - '5432:5432'
+    volumes:
+      - trialtree_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U trialtree -d trialtree']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  trialtree_pgdata:

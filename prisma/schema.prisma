@@ -1,0 +1,162 @@
+// TrialTree data model
+// ---------------------------------------------------------------------------
+// The "tree" is a self-referential DecisionNode hierarchy:
+//   Prostate Cancer (DISEASE_TYPE)
+//     └─ mCRPC (DISEASE_STATE)
+//          └─ Second-line therapy (LINE_OF_THERAPY)
+//               └─ [Trials attach here, each with per-location status]
+// ---------------------------------------------------------------------------
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// --- The decision pathway (the branches of the tree) -----------------------
+enum NodeKind {
+  DISEASE_TYPE // Prostate, Bladder, Renal
+  DISEASE_STATE // mCRPC, localized, metastatic, NMIBC, ...
+  LINE_OF_THERAPY // first-line, second-line, ...
+  BIOMARKER // e.g. HRR-mutated, PD-L1+
+}
+
+model DecisionNode {
+  id        String   @id @default(cuid())
+  label     String
+  kind      NodeKind
+  // Self relation builds the tree topology.
+  parentId  String?
+  parent    DecisionNode?  @relation("NodeChildren", fields: [parentId], references: [id], onDelete: Cascade)
+  children  DecisionNode[] @relation("NodeChildren")
+  // Trials hang off the leaf decision nodes.
+  trials    Trial[]
+  sortOrder Int      @default(0)
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([parentId])
+  @@index([kind])
+}
+
+// --- Institutions (the SoCal centers) --------------------------------------
+model Location {
+  id        String          @id @default(cuid())
+  slug      String          @unique // "city-of-hope", "ucla", ...
+  name      String // "City of Hope"
+  shortName String // "COH"
+  region    String          @default("Southern California")
+  clinicians Clinician[]
+  trialLinks TrialLocation[]
+  createdAt DateTime        @default(now())
+}
+
+// --- Trials (the leaves) ---------------------------------------------------
+model Trial {
+  id                  String          @id @default(cuid())
+  nctId               String?         @unique // NCT01234567
+  protocolNumber      String? // e.g. "COH-21345"
+  shorthand           String? // human shorthand: "Phase II bladder trial"
+  title               String
+  phase               String? // "Phase II", "Phase I/II"
+  principalInvestigator String?
+  eligibilityCriteria String? // free-text, updated via UPDATE_CRITERIA
+  // Which decision node this trial lives under.
+  decisionNodeId      String
+  decisionNode        DecisionNode    @relation(fields: [decisionNodeId], references: [id], onDelete: Cascade)
+  locations           TrialLocation[]
+  cohorts             Cohort[]
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  @@index([decisionNodeId])
+  @@index([shorthand])
+}
+
+enum RecruitmentStatus {
+  RECRUITING
+  WAITLISTED
+  CLOSED
+  SUSPENDED
+}
+
+// Join row: a trial's recruitment status AT a specific location.
+model TrialLocation {
+  id         String            @id @default(cuid())
+  trialId    String
+  trial      Trial             @relation(fields: [trialId], references: [id], onDelete: Cascade)
+  locationId String
+  location   Location          @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  status     RecruitmentStatus @default(RECRUITING)
+  piName     String? // site-specific PI may differ from the lead PI
+  slotsOpen  Int? // optional accrual slots remaining
+  updatedAt  DateTime          @updatedAt
+
+  @@unique([trialId, locationId])
+  @@index([locationId, status])
+}
+
+// Cohorts/arms added to a trial (via ADD_COHORT).
+model Cohort {
+  id        String            @id @default(cuid())
+  trialId   String
+  trial     Trial             @relation(fields: [trialId], references: [id], onDelete: Cascade)
+  label     String
+  status    RecruitmentStatus @default(RECRUITING)
+  createdAt DateTime          @default(now())
+}
+
+// --- Authorized clinicians (the allowlist for inbound webhooks) ------------
+model Clinician {
+  id         String    @id @default(cuid())
+  name       String
+  phone      String?   @unique // E.164, e.g. +13105550123
+  email      String?   @unique
+  role       String    @default("PI")
+  active     Boolean   @default(true)
+  locationId String?
+  location   Location? @relation(fields: [locationId], references: [id])
+  createdAt  DateTime  @default(now())
+
+  @@index([phone])
+  @@index([email])
+}
+
+// --- Audit log / review queue for every inbound action ---------------------
+enum ActionSource {
+  SMS
+  EMAIL
+  ADMIN
+}
+
+enum ActionStatus {
+  APPLIED // auto-applied (confidence >= threshold)
+  PENDING_REVIEW // below threshold, awaiting admin approval
+  REJECTED // admin rejected
+  FAILED // could not resolve target / DB error
+}
+
+model ActionLog {
+  id               String       @id @default(cuid())
+  source           ActionSource
+  sender           String // phone number or email of the clinician
+  rawText          String // exactly what they sent
+  action           String? // CLOSE_TRIAL, OPEN_TRIAL, ...
+  targetIdentifier Json? // { nct_id, protocol_number, shorthand }
+  locationGuess    String?
+  payload          Json? // { new_status, cohort_label, criteria_text, notes }
+  confidence       Int? // 0-100
+  reasoning        String?
+  status           ActionStatus
+  resultMessage    String? // human-readable outcome / error
+  resolvedTrialId  String?
+  appliedAt        DateTime?
+  createdAt        DateTime     @default(now())
+
+  @@index([status])
+  @@index([createdAt])
+}
