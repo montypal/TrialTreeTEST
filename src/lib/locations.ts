@@ -26,13 +26,13 @@ export const CENTERS: CenterDef[] = [
     slug: 'ucsd',
     name: 'UC San Diego Health',
     shortName: 'UCSD',
-    aliases: ['ucsd', 'uc san diego', 'moores', 'san diego'],
+    aliases: ['ucsd', 'uc san diego', 'university of california san diego', 'moores', 'la jolla'],
   },
   {
     slug: 'uci',
     name: 'UC Irvine Health',
     shortName: 'UCI',
-    aliases: ['uci', 'uc irvine', 'chao', 'irvine'],
+    aliases: ['uci', 'uc irvine', 'university of california irvine', 'chao', 'irvine'],
   },
   {
     slug: 'usc',

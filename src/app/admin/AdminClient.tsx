@@ -9,8 +9,13 @@ import type { TreeFilter } from '@/types';
 
 export function AdminClient() {
   const [filter, setFilter] = useState<TreeFilter>({ locationSlug: null, pi: null });
+  const [showTrials, setShowTrials] = useState(false);
   // Admin watches the global stream so it reflects changes at any center.
   const { data, loading, connected, lastSummary } = useTreeStream({});
+
+  // Overview (counts) by default when viewing all centers; a specific center or
+  // PI filter — or the toggle — expands the individual trials.
+  const collapse = !filter.locationSlug && !filter.pi && !showTrials;
 
   return (
     <div className="flex h-screen w-screen overflow-hidden">
@@ -27,8 +32,19 @@ export function AdminClient() {
             Loading trial map…
           </div>
         ) : (
-          <TreeFlow data={data} filter={filter} />
+          <TreeFlow data={data} filter={filter} collapse={collapse} />
         )}
+
+        {/* Overview / expand toggle (only meaningful for the all-centers view). */}
+        {!filter.locationSlug && !filter.pi && (
+          <button
+            onClick={() => setShowTrials((v) => !v)}
+            className="absolute left-4 top-4 z-10 rounded-lg border border-slate-600 bg-slate-900/90 px-3 py-1.5 text-xs font-semibold text-slate-200 shadow-lg hover:bg-slate-800"
+          >
+            {showTrials ? '▲ Overview (counts)' : '▼ Show every trial'}
+          </button>
+        )}
+
         {/* Local-only real-time simulator (removed from production builds). */}
         <DevTools />
       </main>

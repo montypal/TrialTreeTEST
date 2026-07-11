@@ -13,15 +13,26 @@ const KIND_STYLES: Record<string, { ring: string; label: string }> = {
 export function DecisionNode({ data }: NodeProps) {
   const d = data as DecisionNodeData;
   const style = KIND_STYLES[d.kind] ?? KIND_STYLES.DISEASE_TYPE;
+  const hasCount = typeof d.trialCount === 'number';
   return (
-    <div
-      className={`w-[230px] rounded-xl border-2 px-3 py-2 text-center shadow-lg ${style.ring}`}
-    >
+    <div className={`w-full rounded-xl border-2 px-3 py-2 text-center shadow-lg ${style.ring}`}>
       <Handle type="target" position={Position.Top} className="!bg-slate-500" />
       <div className="text-[0.62rem] font-bold uppercase tracking-widest text-slate-400">
         {style.label}
       </div>
       <div className="text-base font-bold leading-tight text-slate-50">{d.label}</div>
+      {hasCount && (
+        <div className="mt-1 flex items-center justify-center gap-1 text-[0.7rem] font-semibold">
+          <span className="rounded-full bg-slate-700/70 px-2 py-0.5 text-slate-200">
+            {d.trialCount} trial{d.trialCount === 1 ? '' : 's'}
+          </span>
+          {!!d.recruitingCount && (
+            <span className="rounded-full bg-green-500/20 px-2 py-0.5 text-green-300">
+              {d.recruitingCount} recruiting
+            </span>
+          )}
+        </div>
+      )}
       <Handle type="source" position={Position.Bottom} className="!bg-slate-500" />
     </div>
   );

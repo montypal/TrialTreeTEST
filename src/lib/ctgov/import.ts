@@ -72,7 +72,9 @@ const BRANCHES: Branch[] = [
 /** Match a CT.gov facility to one of our SoCal centers, else null. */
 function matchCenterSlug(facility: string, state: string): string | null {
   if (state && state.toLowerCase() !== 'california') return null;
-  const f = facility.toLowerCase();
+  // Normalize punctuation so "University of California, Los Angeles" matches
+  // the alias "university of california los angeles".
+  const f = facility.toLowerCase().replace(/[.,/]/g, ' ').replace(/\s+/g, ' ').trim();
   for (const c of CENTERS) {
     if (c.aliases.some((a) => f.includes(a))) return c.slug;
   }

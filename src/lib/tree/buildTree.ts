@@ -4,27 +4,42 @@ import type { TreeData, TreeFilter, TrialDTO, DecisionNodeDTO } from '@/types';
 
 // Pure (client-safe) transform: TreeData + filter -> laid-out React Flow graph.
 // Used by both the admin canvas and the kiosk display so they stay in sync.
+//
+// Two rendering modes (there can be hundreds of real trials):
+//   • collapse=true  → structural overview: decision nodes only, each leaf shows
+//     a "N trials · M recruiting" badge. The whole tree fits on one screen.
+//   • collapse=false → trials render, wrapped into a compact GRID under each
+//     decision node (not one long horizontal row).
 
-export type DecisionNodeData = { label: string; kind: DecisionNodeDTO['kind'] };
+export type DecisionNodeData = {
+  label: string;
+  kind: DecisionNodeDTO['kind'];
+  trialCount?: number; // set in collapsed mode
+  recruitingCount?: number; // set in collapsed mode
+};
+
 export type TrialNodeData = {
   title: string;
   phase: string | null;
   nctId: string | null;
   pi: string | null;
   shorthand: string | null;
-  /** Per-location statuses relevant to the current view. */
   statuses: { locationName: string; status: TrialDTO['locations'][number]['status'] }[];
   cohorts: { label: string; status: string }[];
+  compact?: boolean;
 };
 
-const NODE_W = 230;
-const DECISION_H = 64;
-const TRIAL_H = 120;
+const NODE_W = 220;
+const DECISION_H = 60;
+const TRIAL_W = 158;
+const TRIAL_H = 104;
+const GAP = 12;
+const COLS = 4; // max trial cards per row within a group
+const HEADER_GAP = 16; // space between a decision header and its trial grid
 
 function trialMatchesFilter(trial: TrialDTO, filter: TreeFilter): boolean {
   if (filter.locationSlug) {
-    const here = trial.locations.some((l) => l.locationSlug === filter.locationSlug);
-    if (!here) return false;
+    if (!trial.locations.some((l) => l.locationSlug === filter.locationSlug)) return false;
   }
   if (filter.pi) {
     const piHit =
@@ -35,15 +50,28 @@ function trialMatchesFilter(trial: TrialDTO, filter: TreeFilter): boolean {
   return true;
 }
 
-export function buildTree(data: TreeData, filter: TreeFilter = {}) {
-  // 1. Which trials survive the filter, and which decision nodes do they need?
+export function buildTree(
+  data: TreeData,
+  filter: TreeFilter = {},
+  opts: { collapse?: boolean } = {},
+) {
+  const collapse = opts.collapse ?? false;
   const trials = data.trials.filter((t) => trialMatchesFilter(t, filter));
-  const neededNodeIds = new Set<string>();
 
-  const byId = new Map(data.decisionNodes.map((n) => [n.id, n]));
-  // Walk each surviving trial's branch up to the root so the path is intact.
+  const byId = new Map(data.decisionNodes.map((n) => [n.id, n] as const));
+
+  // Group surviving trials by the decision node they hang off.
+  const trialsByNode = new Map<string, TrialDTO[]>();
   for (const t of trials) {
-    let cur: DecisionNodeDTO | undefined = byId.get(t.decisionNodeId);
+    const arr = trialsByNode.get(t.decisionNodeId) ?? [];
+    arr.push(t);
+    trialsByNode.set(t.decisionNodeId, arr);
+  }
+
+  // Needed decision nodes = every ancestor of a node that holds ≥1 trial.
+  const neededNodeIds = new Set<string>();
+  for (const nodeId of trialsByNode.keys()) {
+    let cur: DecisionNodeDTO | undefined = byId.get(nodeId);
     while (cur) {
       neededNodeIds.add(cur.id);
       cur = cur.parentId ? byId.get(cur.parentId) : undefined;
@@ -51,16 +79,22 @@ export function buildTree(data: TreeData, filter: TreeFilter = {}) {
   }
 
   const g = new dagre.graphlib.Graph();
-  g.setGraph({ rankdir: 'TB', nodesep: 40, ranksep: 70, marginx: 24, marginy: 24 });
+  g.setGraph({ rankdir: 'TB', nodesep: 28, ranksep: 60, marginx: 24, marginy: 24 });
   g.setDefaultEdgeLabel(() => ({}));
 
   const rfNodes: Node[] = [];
   const rfEdges: Edge[] = [];
 
-  // 2. Decision nodes.
+  // 1. Size + register decision nodes (reserving grid space when expanded).
   for (const n of data.decisionNodes) {
     if (!neededNodeIds.has(n.id)) continue;
-    g.setNode(n.id, { width: NODE_W, height: DECISION_H });
+    const held = trialsByNode.get(n.id);
+    if (!collapse && held && held.length) {
+      const { gridW, gridH } = gridSize(held.length);
+      g.setNode(n.id, { width: Math.max(NODE_W, gridW), height: DECISION_H + HEADER_GAP + gridH });
+    } else {
+      g.setNode(n.id, { width: NODE_W, height: DECISION_H });
+    }
     if (n.parentId && neededNodeIds.has(n.parentId)) {
       g.setEdge(n.parentId, n.id);
       rfEdges.push({
@@ -72,56 +106,77 @@ export function buildTree(data: TreeData, filter: TreeFilter = {}) {
     }
   }
 
-  // 3. Trial leaf nodes hang off their decision node.
-  for (const t of trials) {
-    const id = `trial-${t.id}`;
-    g.setNode(id, { width: NODE_W, height: TRIAL_H });
-    g.setEdge(t.decisionNodeId, id);
-    rfEdges.push({
-      id: `e-${t.decisionNodeId}-${id}`,
-      source: t.decisionNodeId,
-      target: id,
-      type: 'smoothstep',
-    });
-  }
-
   dagre.layout(g);
 
-  // 4. Emit positioned React Flow nodes.
+  const locSlug = filter.locationSlug ?? null;
+  const recruitingUnder = (arr: TrialDTO[]) =>
+    arr.filter((t) =>
+      t.locations.some((l) => (!locSlug || l.locationSlug === locSlug) && l.status === 'RECRUITING'),
+    ).length;
+
+  // 2. Emit positioned nodes.
   for (const n of data.decisionNodes) {
     if (!neededNodeIds.has(n.id)) continue;
-    const pos = g.node(n.id);
+    const p = g.node(n.id);
+    const held = trialsByNode.get(n.id) ?? [];
+    const boxTop = p.y - p.height / 2;
+
+    // Decision header — centered at the top of its (possibly wide) reserved box.
+    const headerData: DecisionNodeData = { label: n.label, kind: n.kind };
+    if (collapse && held.length) {
+      headerData.trialCount = held.length;
+      headerData.recruitingCount = recruitingUnder(held);
+    }
     rfNodes.push({
       id: n.id,
       type: 'decision',
-      position: { x: pos.x - NODE_W / 2, y: pos.y - DECISION_H / 2 },
-      data: { label: n.label, kind: n.kind } satisfies DecisionNodeData,
+      position: { x: p.x - NODE_W / 2, y: boxTop },
+      data: headerData,
+      style: { width: NODE_W },
     });
-  }
 
-  for (const t of trials) {
-    const id = `trial-${t.id}`;
-    const pos = g.node(id);
-    const statuses = (filter.locationSlug
-      ? t.locations.filter((l) => l.locationSlug === filter.locationSlug)
-      : t.locations
-    ).map((l) => ({ locationName: l.locationName, status: l.status }));
+    // Trial grid (expanded mode only).
+    if (!collapse && held.length) {
+      const cols = Math.min(COLS, held.length);
+      const gridW = cols * TRIAL_W + (cols - 1) * GAP;
+      const gridLeft = p.x - gridW / 2;
+      const gridTop = boxTop + DECISION_H + HEADER_GAP;
 
-    rfNodes.push({
-      id,
-      type: 'trial',
-      position: { x: pos.x - NODE_W / 2, y: pos.y - TRIAL_H / 2 },
-      data: {
-        title: t.title,
-        phase: t.phase,
-        nctId: t.nctId,
-        pi: t.principalInvestigator,
-        shorthand: t.shorthand,
-        statuses,
-        cohorts: t.cohorts.map((c) => ({ label: c.label, status: c.status })),
-      } satisfies TrialNodeData,
-    });
+      held.forEach((t, i) => {
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+        const statuses = (locSlug ? t.locations.filter((l) => l.locationSlug === locSlug) : t.locations)
+          .map((l) => ({ locationName: l.locationName, status: l.status }));
+        rfNodes.push({
+          id: `trial-${t.id}`,
+          type: 'trial',
+          position: { x: gridLeft + col * (TRIAL_W + GAP), y: gridTop + row * (TRIAL_H + GAP) },
+          data: {
+            title: t.title,
+            phase: t.phase,
+            nctId: t.nctId,
+            pi: t.principalInvestigator,
+            shorthand: t.shorthand,
+            statuses,
+            cohorts: t.cohorts.map((c) => ({ label: c.label, status: c.status })),
+            compact: true,
+          } satisfies TrialNodeData,
+          style: { width: TRIAL_W },
+          draggable: false,
+          selectable: false,
+        });
+      });
+    }
   }
 
   return { nodes: rfNodes, edges: rfEdges };
+}
+
+function gridSize(k: number) {
+  const cols = Math.min(COLS, k);
+  const rows = Math.ceil(k / cols);
+  return {
+    gridW: cols * TRIAL_W + (cols - 1) * GAP,
+    gridH: rows * TRIAL_H + (rows - 1) * GAP,
+  };
 }

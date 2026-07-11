@@ -23,10 +23,15 @@ type Props = {
   filter?: TreeFilter;
   /** Kiosk = non-interactive, fit-to-screen, no chrome. */
   kiosk?: boolean;
+  /** Collapse trials into per-node counts so the whole tree fits one screen. */
+  collapse?: boolean;
 };
 
-export function TreeFlow({ data, filter = {}, kiosk = false }: Props) {
-  const { nodes, edges } = useMemo(() => buildTree(data, filter), [data, filter]);
+export function TreeFlow({ data, filter = {}, kiosk = false, collapse = false }: Props) {
+  const { nodes, edges } = useMemo(
+    () => buildTree(data, filter, { collapse }),
+    [data, filter, collapse],
+  );
 
   return (
     <ReactFlowProvider>
