@@ -13,9 +13,9 @@ export function AdminClient() {
   // Admin watches the global stream so it reflects changes at any center.
   const { data, loading, connected, lastSummary } = useTreeStream({});
 
-  // Overview (counts) by default when viewing all centers; a specific center or
-  // PI filter — or the toggle — expands the individual trials.
-  const collapse = !filter.locationSlug && !filter.pi && !showTrials;
+  // Always start on the compact counts overview; the toggle expands the actual
+  // trial cards. Filtering to a hospital/PI just narrows what's counted/shown.
+  const collapse = !showTrials;
 
   return (
     <div className="flex h-screen w-screen overflow-hidden">
@@ -35,15 +35,13 @@ export function AdminClient() {
           <TreeFlow data={data} filter={filter} collapse={collapse} />
         )}
 
-        {/* Overview / expand toggle (only meaningful for the all-centers view). */}
-        {!filter.locationSlug && !filter.pi && (
-          <button
-            onClick={() => setShowTrials((v) => !v)}
-            className="absolute left-4 top-4 z-10 rounded-lg border border-slate-600 bg-slate-900/90 px-3 py-1.5 text-xs font-semibold text-slate-200 shadow-lg hover:bg-slate-800"
-          >
-            {showTrials ? '▲ Overview (counts)' : '▼ Show every trial'}
-          </button>
-        )}
+        {/* Overview / expand toggle. */}
+        <button
+          onClick={() => setShowTrials((v) => !v)}
+          className="absolute left-4 top-4 z-10 rounded-lg border border-slate-600 bg-slate-900/90 px-3 py-1.5 text-xs font-semibold text-slate-200 shadow-lg hover:bg-slate-800"
+        >
+          {showTrials ? '▲ Back to overview' : '▼ Show individual trials'}
+        </button>
 
         {/* Local-only real-time simulator (removed from production builds). */}
         <DevTools />

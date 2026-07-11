@@ -79,7 +79,9 @@ export function buildTree(
   }
 
   const g = new dagre.graphlib.Graph();
-  g.setGraph({ rankdir: 'TB', nodesep: 28, ranksep: 60, marginx: 24, marginy: 24 });
+  // Left-to-right: disease branches stack vertically, depth grows rightward —
+  // reads like an organized outline instead of one very wide row.
+  g.setGraph({ rankdir: 'LR', nodesep: 20, ranksep: 90, marginx: 30, marginy: 30 });
   g.setDefaultEdgeLabel(() => ({}));
 
   const rfNodes: Node[] = [];

@@ -16,7 +16,7 @@ export function DecisionNode({ data }: NodeProps) {
   const hasCount = typeof d.trialCount === 'number';
   return (
     <div className={`w-full rounded-xl border-2 px-3 py-2 text-center shadow-lg ${style.ring}`}>
-      <Handle type="target" position={Position.Top} className="!bg-slate-500" />
+      <Handle type="target" position={Position.Left} className="!bg-slate-500" />
       <div className="text-[0.62rem] font-bold uppercase tracking-widest text-slate-400">
         {style.label}
       </div>
@@ -33,7 +33,7 @@ export function DecisionNode({ data }: NodeProps) {
           )}
         </div>
       )}
-      <Handle type="source" position={Position.Bottom} className="!bg-slate-500" />
+      <Handle type="source" position={Position.Right} className="!bg-slate-500" />
     </div>
   );
 }
