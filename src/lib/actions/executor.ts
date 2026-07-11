@@ -127,10 +127,12 @@ export async function applyAction(
       const location = await prisma.location.findUnique({ where: { slug: locationSlug } });
       if (!location) return { ok: false, message: `Unknown location: ${locationSlug}` };
 
+      // manualOverride marks this as a human decision so the ClinicalTrials.gov
+      // importer won't revert it on the next sync.
       await prisma.trialLocation.upsert({
         where: { trialId_locationId: { trialId: trial.id, locationId: location.id } },
-        update: { status },
-        create: { trialId: trial.id, locationId: location.id, status },
+        update: { status, manualOverride: true, source: 'MANUAL' },
+        create: { trialId: trial.id, locationId: location.id, status, manualOverride: true, source: 'MANUAL' },
       });
 
       const summary = `${trial.title} → ${status} at ${locationLabel(locationSlug)}`;
@@ -155,7 +157,11 @@ export async function applyAction(
     case 'UPDATE_CRITERIA': {
       const text = action.payload.criteria_text?.trim();
       if (!text) return { ok: false, message: 'UPDATE_CRITERIA requires criteria_text.' };
-      await prisma.trial.update({ where: { id: trial.id }, data: { eligibilityCriteria: text } });
+      // criteriaOverride stops the CT.gov importer from overwriting this edit.
+      await prisma.trial.update({
+        where: { id: trial.id },
+        data: { eligibilityCriteria: text, criteriaOverride: true },
+      });
       const summary = `Updated eligibility criteria for ${trial.title}`;
       publishTreeUpdate({ location: locationSlug ?? 'all', action: 'UPDATE_CRITERIA', summary });
       if (locationSlug) publishTreeUpdate({ location: 'all', action: 'UPDATE_CRITERIA', summary });

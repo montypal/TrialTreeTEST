@@ -63,6 +63,24 @@ export function DevTools() {
     }
   };
 
+  const runEndpoint = async (path: string, label: string) => {
+    setBusy(true);
+    setResult(`${label}…`);
+    try {
+      const res = await fetch(path, { method: 'POST' });
+      const json = await res.json();
+      const detail =
+        json.status === 'IMPORTED'
+          ? `${json.created} new, ${json.updated} updated, ${json.siteRowsPreserved} edits kept`
+          : (json.message ?? JSON.stringify(json));
+      setResult(`${label}: ${detail}`.slice(0, 220));
+    } catch (e) {
+      setResult(e instanceof Error ? e.message : 'request failed');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   if (!open) {
     return (
       <button
@@ -87,7 +105,28 @@ export function DevTools() {
         Fires <code>/api/dev/simulate</code>. Watch a <code>/kiosk/&lt;location&gt;</code> tab redraw.
       </p>
 
-      <div className="mt-3 space-y-1">
+      <div className="mt-3 text-xs font-semibold uppercase tracking-wider text-slate-400">Data</div>
+      <div className="mt-1 grid grid-cols-2 gap-2">
+        <button
+          disabled={busy}
+          onClick={() => runEndpoint('/api/dev/import', 'Import')}
+          className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
+        >
+          Import CT.gov trials
+        </button>
+        <button
+          disabled={busy}
+          onClick={() => runEndpoint('/api/dev/seed', 'Seed')}
+          className="rounded-lg border border-slate-600 px-3 py-1.5 text-xs font-semibold hover:bg-slate-800 disabled:opacity-50"
+        >
+          Load demo seed
+        </button>
+      </div>
+
+      <div className="mt-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+        Simulate a text
+      </div>
+      <div className="mt-1 space-y-1">
         {PRESETS.map((p) => (
           <button
             key={p.label}
