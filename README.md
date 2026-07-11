@@ -165,7 +165,8 @@ boot (creates the tables), so the only manual data step is hitting the seed URL 
    - `ENABLE_DEV_SIMULATE` = `true`  (lets you seed + simulate on the deployed instance)
    - `NEXT_PUBLIC_SMS_NUMBER` = any number for now (rendered into the kiosk QR)
 5. Wait for the deploy, then open your Railway URL and:
-   - `https://<app>/api/dev/seed` once → loads the demo trials.
+   - `https://<app>/api/dev/import` once → pulls **real** recruiting GU trials from
+     ClinicalTrials.gov for the 5 SoCal centers. (Or `/api/dev/seed` for the hand-made demo set.)
    - `https://<app>/kiosk/city-of-hope` on one screen.
    - `https://<app>/api/dev/simulate?location=city-of-hope&mode=flash` on another → kiosk flashes.
    - `https://<app>/admin` for the interactive tree.

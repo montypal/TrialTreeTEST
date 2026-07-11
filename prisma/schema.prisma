@@ -65,6 +65,11 @@ model Trial {
   phase               String? // "Phase II", "Phase I/II"
   principalInvestigator String?
   eligibilityCriteria String? // free-text, updated via UPDATE_CRITERIA
+  // Provenance: CTGOV (synced from ClinicalTrials.gov) or MANUAL.
+  source              String   @default("MANUAL")
+  lastSyncedAt        DateTime? // last time the CT.gov importer touched this row
+  // If a clinician edited criteria via text, the importer stops overwriting it.
+  criteriaOverride    Boolean  @default(false)
   // Which decision node this trial lives under.
   decisionNodeId      String
   decisionNode        DecisionNode    @relation(fields: [decisionNodeId], references: [id], onDelete: Cascade)
@@ -94,6 +99,12 @@ model TrialLocation {
   status     RecruitmentStatus @default(RECRUITING)
   piName     String? // site-specific PI may differ from the lead PI
   slotsOpen  Int? // optional accrual slots remaining
+  // True once a clinician changes this site's status by text/email. The
+  // ClinicalTrials.gov importer will NOT overwrite a row that is overridden,
+  // so human edits win and persist across syncs.
+  manualOverride Boolean       @default(false)
+  source     String            @default("MANUAL") // CTGOV | MANUAL
+  lastSyncedAt DateTime?
   updatedAt  DateTime          @updatedAt
 
   @@unique([trialId, locationId])
