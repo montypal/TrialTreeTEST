@@ -33,6 +33,7 @@ export interface TrialDTO {
   title: string;
   phase: string | null;
   principalInvestigator: string | null;
+  eligibilityCriteria: string | null;
   decisionNodeId: string;
   locations: TrialLocationDTO[];
   cohorts: CohortDTO[];

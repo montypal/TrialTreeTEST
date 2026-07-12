@@ -53,12 +53,34 @@ function trialMatchesFilter(trial: TrialDTO, filter: TreeFilter): boolean {
 export function buildTree(
   data: TreeData,
   filter: TreeFilter = {},
-  opts: { collapse?: boolean } = {},
+  opts: { collapse?: boolean; focusNodeId?: string | null } = {},
 ) {
-  const collapse = opts.collapse ?? false;
-  const trials = data.trials.filter((t) => trialMatchesFilter(t, filter));
+  const focusNodeId = opts.focusNodeId ?? null;
+  // Drilling into a branch always shows its trials; otherwise honor `collapse`.
+  const collapse = focusNodeId ? false : (opts.collapse ?? false);
 
   const byId = new Map(data.decisionNodes.map((n) => [n.id, n] as const));
+
+  let trials = data.trials.filter((t) => trialMatchesFilter(t, filter));
+  if (focusNodeId) {
+    // Restrict to the focused node and everything beneath it.
+    const childMap = new Map<string, string[]>();
+    for (const n of data.decisionNodes) {
+      if (!n.parentId) continue;
+      const arr = childMap.get(n.parentId) ?? [];
+      arr.push(n.id);
+      childMap.set(n.parentId, arr);
+    }
+    const inFocus = new Set<string>();
+    const stack = [focusNodeId];
+    while (stack.length) {
+      const id = stack.pop()!;
+      if (inFocus.has(id)) continue;
+      inFocus.add(id);
+      for (const c of childMap.get(id) ?? []) stack.push(c);
+    }
+    trials = trials.filter((t) => inFocus.has(t.decisionNodeId));
+  }
 
   // Group surviving trials by the decision node they hang off.
   const trialsByNode = new Map<string, TrialDTO[]>();
@@ -165,7 +187,7 @@ export function buildTree(
           } satisfies TrialNodeData,
           style: { width: TRIAL_W },
           draggable: false,
-          selectable: false,
+          selectable: true,
         });
       });
     }

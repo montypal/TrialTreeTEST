@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, type MouseEvent } from 'react';
 import {
   ReactFlow,
   Background,
   Controls,
   MiniMap,
   useReactFlow,
+  type Node,
   type NodeTypes,
   ReactFlowProvider,
 } from '@xyflow/react';
@@ -24,12 +25,24 @@ type Props = {
   kiosk?: boolean;
   /** Collapse trials into per-node counts so the whole tree fits one screen. */
   collapse?: boolean;
+  /** Drill into a single branch (its subtree, trials expanded). */
+  focusNodeId?: string | null;
+  onNodeClick?: (event: MouseEvent, node: Node) => void;
+  onPaneClick?: () => void;
 };
 
-export function TreeFlow({ data, filter = {}, kiosk = false, collapse = false }: Props) {
+export function TreeFlow({
+  data,
+  filter = {},
+  kiosk = false,
+  collapse = false,
+  focusNodeId = null,
+  onNodeClick,
+  onPaneClick,
+}: Props) {
   const { nodes, edges } = useMemo(
-    () => buildTree(data, filter, { collapse }),
-    [data, filter, collapse],
+    () => buildTree(data, filter, { collapse, focusNodeId }),
+    [data, filter, collapse, focusNodeId],
   );
 
   return (
@@ -38,6 +51,8 @@ export function TreeFlow({ data, filter = {}, kiosk = false, collapse = false }:
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
+        onNodeClick={onNodeClick}
+        onPaneClick={onPaneClick}
         fitView
         fitViewOptions={{ padding: 0.15 }}
         minZoom={0.2}

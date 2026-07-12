@@ -42,6 +42,7 @@ export async function GET(_req: NextRequest) {
         title: t.title,
         phase: t.phase,
         principalInvestigator: t.principalInvestigator,
+        eligibilityCriteria: t.eligibilityCriteria,
         decisionNodeId: t.decisionNodeId,
         locations: t.locations.map((l) => {
           if (l.piName) piSet.add(l.piName);
