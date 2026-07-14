@@ -30,7 +30,6 @@ export type TrialNodeData = {
 };
 
 const NODE_W = 220;
-const DECISION_H = 60;
 const TRIAL_W = 158;
 const TRIAL_H = 104;
 const GAP = 12;
@@ -103,7 +102,7 @@ export function buildTree(
   const g = new dagre.graphlib.Graph();
   // Left-to-right: disease branches stack vertically, depth grows rightward —
   // reads like an organized outline instead of one very wide row.
-  g.setGraph({ rankdir: 'LR', nodesep: 20, ranksep: 90, marginx: 30, marginy: 30 });
+  g.setGraph({ rankdir: 'LR', nodesep: 26, ranksep: 90, marginx: 30, marginy: 30 });
   g.setDefaultEdgeLabel(() => ({}));
 
   const rfNodes: Node[] = [];
@@ -115,9 +114,12 @@ export function buildTree(
     const held = trialsByNode.get(n.id);
     if (!collapse && held && held.length) {
       const { gridW, gridH } = gridSize(held.length);
-      g.setNode(n.id, { width: Math.max(NODE_W, gridW), height: DECISION_H + HEADER_GAP + gridH });
+      const headerH = decisionHeight(n.label, false);
+      g.setNode(n.id, { width: Math.max(NODE_W, gridW), height: headerH + HEADER_GAP + gridH });
     } else {
-      g.setNode(n.id, { width: NODE_W, height: DECISION_H });
+      // Reserve enough height for a (possibly two-line) label + count badge so
+      // sibling boxes never overlap.
+      g.setNode(n.id, { width: NODE_W, height: decisionHeight(n.label, collapse && !!held?.length) });
     }
     if (n.parentId && neededNodeIds.has(n.parentId)) {
       g.setEdge(n.parentId, n.id);
@@ -164,7 +166,7 @@ export function buildTree(
       const cols = Math.min(COLS, held.length);
       const gridW = cols * TRIAL_W + (cols - 1) * GAP;
       const gridLeft = p.x - gridW / 2;
-      const gridTop = boxTop + DECISION_H + HEADER_GAP;
+      const gridTop = boxTop + decisionHeight(n.label, false) + HEADER_GAP;
 
       held.forEach((t, i) => {
         const col = i % cols;
@@ -203,4 +205,11 @@ function gridSize(k: number) {
     gridW: cols * TRIAL_W + (cols - 1) * GAP,
     gridH: rows * TRIAL_H + (rows - 1) * GAP,
   };
+}
+
+// Estimated rendered height of a decision box so dagre reserves enough vertical
+// room (labels can wrap to 2 lines; the count badge adds another row).
+function decisionHeight(label: string, hasCount: boolean): number {
+  const lines = Math.max(1, Math.ceil(label.length / 18));
+  return 46 + lines * 22 + (hasCount ? 30 : 0);
 }
