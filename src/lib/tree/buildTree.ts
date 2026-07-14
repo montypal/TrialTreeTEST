@@ -1,6 +1,7 @@
 import dagre from 'dagre';
 import type { Edge, Node } from '@xyflow/react';
 import type { TreeData, TreeFilter, TrialDTO, DecisionNodeDTO } from '@/types';
+import { centerBySlug } from '@/lib/locations';
 
 // Pure (client-safe) transform: TreeData + filter -> laid-out React Flow graph.
 // Used by both the admin canvas and the kiosk display so they stay in sync.
@@ -24,7 +25,7 @@ export type TrialNodeData = {
   nctId: string | null;
   pi: string | null;
   shorthand: string | null;
-  statuses: { locationName: string; status: TrialDTO['locations'][number]['status'] }[];
+  statuses: { locationName: string; short: string; status: TrialDTO['locations'][number]['status'] }[];
   cohorts: { label: string; status: string }[];
   compact?: boolean;
 };
@@ -172,7 +173,11 @@ export function buildTree(
         const col = i % cols;
         const row = Math.floor(i / cols);
         const statuses = (locSlug ? t.locations.filter((l) => l.locationSlug === locSlug) : t.locations)
-          .map((l) => ({ locationName: l.locationName, status: l.status }));
+          .map((l) => ({
+            locationName: l.locationName,
+            short: centerBySlug(l.locationSlug)?.shortName ?? l.locationName,
+            status: l.status,
+          }));
         rfNodes.push({
           id: `trial-${t.id}`,
           type: 'trial',

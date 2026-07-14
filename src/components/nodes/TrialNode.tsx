@@ -33,7 +33,7 @@ export function TrialNode({ data }: NodeProps) {
           {d.statuses.map((s, i) => (
             <span key={i} className="inline-flex items-center gap-0.5 text-[0.55rem] text-slate-300">
               <span className={`inline-block h-1.5 w-1.5 rounded-full ${DOT[s.status] ?? 'bg-slate-400'}`} />
-              {s.locationName.split(' ')[0]}
+              {s.short}
             </span>
           ))}
         </div>
@@ -57,7 +57,7 @@ export function TrialNode({ data }: NodeProps) {
       <div className="mt-1.5 flex flex-wrap gap-1">
         {d.statuses.map((s, i) => (
           <span key={i} className={`pill pill-${s.status}`}>
-            {s.locationName.split(' ')[0]}: {s.status[0] + s.status.slice(1).toLowerCase()}
+            {s.short}: {s.status[0] + s.status.slice(1).toLowerCase()}
           </span>
         ))}
       </div>
