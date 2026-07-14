@@ -24,6 +24,13 @@ export function Sidebar({ pis, filter, connected, lastSummary, onChange }: Props
         </div>
       </div>
 
+      <a
+        href="/find"
+        className="rounded-lg border border-blue-500/50 bg-blue-500/10 px-3 py-2 text-center text-sm font-semibold text-blue-200 hover:bg-blue-500/20"
+      >
+        ✨ Find a trial with AI
+      </a>
+
       <div>
         <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
           Hospital / Center

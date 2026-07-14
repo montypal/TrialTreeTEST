@@ -10,7 +10,7 @@ export function TrialDetail({ trial, onClose }: { trial: TrialDTO; onClose: () =
   const nctUrl = trial.nctId ? `https://clinicaltrials.gov/study/${trial.nctId}` : null;
 
   return (
-    <div className="absolute inset-y-0 right-0 z-30 flex w-[440px] max-w-[92vw] flex-col border-l border-slate-700 bg-slate-950/95 shadow-2xl">
+    <div className="fixed inset-y-0 right-0 z-40 flex w-[440px] max-w-[92vw] flex-col border-l border-slate-700 bg-slate-950/95 shadow-2xl">
       <div className="flex items-start justify-between gap-3 border-b border-slate-800 p-5">
         <div>
           <div className="text-[0.65rem] font-bold uppercase tracking-widest text-blue-300">

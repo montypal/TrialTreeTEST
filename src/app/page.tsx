@@ -10,6 +10,21 @@ export default function Home() {
         clinic kiosks redraw instantly.
       </p>
 
+      <section className="mt-8 rounded-2xl border border-blue-500/40 bg-blue-500/10 p-5">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-blue-300">
+          ✨ Find a trial with AI
+        </h2>
+        <p className="mt-1 text-sm text-slate-300">
+          Describe a de-identified patient scenario and get ranked, matching trials in seconds.
+        </p>
+        <Link
+          href="/find"
+          className="mt-3 inline-block rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-500"
+        >
+          Open the trial finder →
+        </Link>
+      </section>
+
       <section className="mt-10">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
           Admin / Desktop
