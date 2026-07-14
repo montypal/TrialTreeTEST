@@ -47,6 +47,21 @@ function trialMatchesFilter(trial: TrialDTO, filter: TreeFilter): boolean {
       trial.locations.some((l) => l.piName === filter.pi);
     if (!piHit) return false;
   }
+  const q = filter.search?.trim().toLowerCase();
+  if (q) {
+    const hay = [
+      trial.title,
+      trial.nctId,
+      trial.shorthand,
+      trial.protocolNumber,
+      trial.principalInvestigator,
+      ...trial.locations.map((l) => l.piName ?? ''),
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+    if (!hay.includes(q)) return false;
+  }
   return true;
 }
 

@@ -17,8 +17,9 @@ export function AdminClient() {
   // Admin watches the global stream so it reflects changes at any center.
   const { data, loading, connected, lastSummary } = useTreeStream({});
 
-  // Overview (counts) until you drill into a branch.
-  const collapse = !focusId;
+  // Overview (counts) by default; expand when drilling in or searching.
+  const searching = !!filter.search?.trim();
+  const collapse = !focusId && !searching;
 
   const stats = useMemo(() => {
     if (!data) return null;

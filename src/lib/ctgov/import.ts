@@ -31,11 +31,18 @@ const BRANCHES: Branch[] = [
     typeLabel: 'Prostate Cancer',
     condition: 'prostate cancer',
     classifyState: (t) => {
-      if (/castration.?resistant|crpc/.test(t)) return 'Metastatic CRPC (mCRPC)';
-      if (/hormone.?sensitive|castration.?sensitive|mhspc|mcspc/.test(t)) return 'Metastatic Hormone-Sensitive';
-      if (/biochemical/.test(t)) return 'Biochemical Recurrence';
-      if (/metastatic|advanced/.test(t)) return 'Metastatic';
-      if (/localized|low.risk|intermediate.risk|high.risk/.test(t)) return 'Localized';
+      if (/nmcrpc|non.?metastatic castration.?resistant|m0 crpc|non.?metastatic crpc/.test(t))
+        return 'Non-metastatic CRPC';
+      if (/mcrpc|metastatic castration.?resistant|castration.?resistant|crpc/.test(t))
+        return 'Metastatic CRPC (mCRPC)';
+      if (/mhspc|hormone.?sensitive|castration.?sensitive|hormone.?naive/.test(t))
+        return 'Metastatic Hormone-Sensitive';
+      if (/neuroendocrine|small.?cell/.test(t)) return 'Neuroendocrine';
+      if (/biochemical|psa recurrence|rising psa/.test(t)) return 'Biochemical Recurrence';
+      if (/oligomet/.test(t)) return 'Oligometastatic';
+      if (/metastatic|advanced|\bm1\b/.test(t)) return 'Metastatic';
+      if (/localized|localised|low.risk|intermediate.risk|high.risk|non.?metastatic/.test(t))
+        return 'Localized';
       return 'Other / unspecified';
     },
     biomarker: (t) => {
@@ -51,7 +58,8 @@ const BRANCHES: Branch[] = [
     classifyState: (t) => {
       if (/non.?muscle.?invasive|nmibc|bcg/.test(t)) return 'Non-Muscle-Invasive (NMIBC)';
       if (/muscle.?invasive|mibc/.test(t)) return 'Muscle-Invasive (MIBC)';
-      if (/metastatic|advanced/.test(t)) return 'Metastatic / Advanced';
+      if (/upper.tract|utuc/.test(t)) return 'Upper Tract (UTUC)';
+      if (/metastatic|advanced|\bm1\b|locally advanced/.test(t)) return 'Metastatic / Advanced';
       return 'Other / unspecified';
     },
   },
@@ -60,10 +68,11 @@ const BRANCHES: Branch[] = [
     typeLabel: 'Renal Cell Carcinoma',
     condition: 'renal cell carcinoma OR kidney cancer',
     classifyState: (t) => {
-      if (/non.?clear|papillary|chromophobe/.test(t)) return 'Non-clear-cell';
+      if (/non.?clear.?cell|papillary|chromophobe|collecting duct|medullary/.test(t))
+        return 'Non-clear-cell';
       if (/clear.?cell|ccrcc/.test(t)) return 'Clear-cell';
-      if (/adjuvant/.test(t)) return 'Adjuvant';
-      if (/metastatic|advanced/.test(t)) return 'Metastatic / Advanced';
+      if (/adjuvant|neoadjuvant|perioperative/.test(t)) return 'Adjuvant / Perioperative';
+      if (/metastatic|advanced|\bm1\b/.test(t)) return 'Metastatic / Advanced';
       return 'Other / unspecified';
     },
   },
@@ -144,7 +153,10 @@ export async function importFromCtgov(prisma: PrismaClient): Promise<ImportSumma
       diseaseCount += 1;
 
       // Classify into the tree.
-      const text = `${study.title} ${study.conditions.join(' ')}`.toLowerCase();
+      // Classify on title + conditions + the INCLUSION criteria (drop the
+      // exclusion section so "no prior mCRPC" etc. doesn't misclassify).
+      const inclusion = (study.eligibility ?? '').split(/exclusion criteria/i)[0];
+      const text = `${study.title} ${study.conditions.join(' ')} ${inclusion}`.toLowerCase();
       const stateNode = await ensureNode(branch.classifyState(text), 'DISEASE_STATE', typeNode.id);
       let parentId = stateNode.id;
       const bm = branch.biomarker?.(text) ?? null;

@@ -12,9 +12,12 @@ html,
 body {
   margin: 0;
   padding: 0;
-  background: #0a0e14;
   color: #e8edf4;
   height: 100%;
+  background-color: #0a0e14;
+  background-image: radial-gradient(1100px 560px at 15% -10%, rgba(59, 130, 246, 0.08), transparent 60%);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 /* React Flow theming for dark, high-contrast kiosk + admin */

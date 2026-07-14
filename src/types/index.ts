@@ -51,4 +51,6 @@ export interface TreeFilter {
   locationSlug?: string | null;
   /** Restrict to a single PI (admin sidebar). */
   pi?: string | null;
+  /** Free-text search across title / NCT / drug / PI / protocol. */
+  search?: string | null;
 }
