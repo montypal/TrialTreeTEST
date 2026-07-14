@@ -3,7 +3,14 @@
 // narrowed to California, and normalize the deeply-nested response into a flat
 // shape the importer can work with.
 
-export type CtgovLocation = { facility: string; city: string; state: string; status: string };
+export type CtgovLocation = {
+  facility: string;
+  city: string;
+  state: string;
+  status: string;
+  /** Site-level investigator if CT.gov lists one for this location, else null. */
+  investigator: string | null;
+};
 export type CtgovStudy = {
   nctId: string;
   title: string;
@@ -61,12 +68,21 @@ function normalize(study: any): CtgovStudy {
     conditions: conditions.conditions ?? [],
     eligibility: elig.eligibilityCriteria ?? null,
     leadPI: officials.find((o) => /principal investigator|study chair|study director/i.test(o?.role ?? ''))?.name ?? officials[0]?.name ?? null,
-    locations: (cl.locations ?? []).map((l: any) => ({
-      facility: l.facility ?? '',
-      city: l.city ?? '',
-      state: l.state ?? '',
-      status: l.status ?? '',
-    })),
+    locations: (cl.locations ?? []).map((l: any) => {
+      // Per-site contacts can include the site's own PI (role "PRINCIPAL_INVESTIGATOR").
+      const contacts: any[] = l.contacts ?? [];
+      const investigator =
+        contacts.find((c) => /principal.investigator/i.test(c?.role ?? ''))?.name ??
+        contacts.find((c) => /sub.investigator/i.test(c?.role ?? ''))?.name ??
+        null;
+      return {
+        facility: l.facility ?? '',
+        city: l.city ?? '',
+        state: l.state ?? '',
+        status: l.status ?? '',
+        investigator,
+      };
+    }),
   };
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */

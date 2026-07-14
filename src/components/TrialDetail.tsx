@@ -19,7 +19,7 @@ export function TrialDetail({ trial, onClose }: { trial: TrialDTO; onClose: () =
           </div>
           <h2 className="mt-1 text-lg font-bold leading-snug text-slate-50">{trial.title}</h2>
           {trial.principalInvestigator && (
-            <div className="mt-1 text-sm text-slate-400">PI: {trial.principalInvestigator}</div>
+            <div className="mt-1 text-sm text-slate-400">Lead PI: {trial.principalInvestigator}</div>
           )}
         </div>
         <button
@@ -40,13 +40,19 @@ export function TrialDetail({ trial, onClose }: { trial: TrialDTO; onClose: () =
             {trial.locations.map((l) => (
               <li
                 key={l.locationSlug}
-                className="flex items-center justify-between gap-2 rounded-lg border border-slate-800 bg-slate-900/50 px-3 py-2"
+                className="flex items-start justify-between gap-2 rounded-lg border border-slate-800 bg-slate-900/50 px-3 py-2"
               >
-                <span className="text-sm font-medium text-slate-200">
-                  {l.locationName}
-                  {l.piName ? <span className="text-slate-500"> · {l.piName}</span> : null}
-                </span>
-                <span className={`pill pill-${l.status}`}>{cap(l.status)}</span>
+                <div>
+                  <div className="text-sm font-medium text-slate-200">{l.locationName}</div>
+                  <div className="text-xs text-slate-500">
+                    {l.piName ? (
+                      <>Site PI: {l.piName}</>
+                    ) : (
+                      <span className="italic">Site investigator not listed on CT.gov</span>
+                    )}
+                  </div>
+                </div>
+                <span className={`pill pill-${l.status} shrink-0`}>{cap(l.status)}</span>
               </li>
             ))}
           </ul>

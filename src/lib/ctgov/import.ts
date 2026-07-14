@@ -131,11 +131,13 @@ export async function importFromCtgov(prisma: PrismaClient): Promise<ImportSumma
     for (const study of studies) {
       if (!study.nctId) continue;
 
-      // Which of our centers is this trial at, and with what status?
-      const sites = new Map<string, string>(); // slug -> ctgov site status
+      // Which of our centers is this trial at — with what status and site PI?
+      const sites = new Map<string, { status: string; investigator: string | null }>();
       for (const loc of study.locations) {
         const slug = matchCenterSlug(loc.facility, loc.state);
-        if (slug && !sites.has(slug)) sites.set(slug, loc.status);
+        if (slug && !sites.has(slug)) {
+          sites.set(slug, { status: loc.status, investigator: loc.investigator });
+        }
       }
       if (sites.size === 0) continue; // not at a SoCal center we track
       summary.matchedSoCal += 1;
@@ -178,9 +180,13 @@ export async function importFromCtgov(prisma: PrismaClient): Promise<ImportSumma
         summary.updated += 1;
       }
 
-      // Upsert each site's status, preserving manual overrides.
-      for (const [slug, siteStatus] of sites) {
+      // Upsert each site's status + site PI, preserving manual overrides.
+      for (const [slug, site] of sites) {
         const locationId = locationIds[slug];
+        const status = mapLocationStatus(site.status);
+        // The site's own PI if CT.gov lists it — NOT the lead PI (that stays on
+        // the trial). Null when CT.gov doesn't name a site investigator.
+        const piName = site.investigator;
         const existingTL = await prisma.trialLocation.findUnique({
           where: { trialId_locationId: { trialId, locationId } },
         });
@@ -194,15 +200,8 @@ export async function importFromCtgov(prisma: PrismaClient): Promise<ImportSumma
         }
         await prisma.trialLocation.upsert({
           where: { trialId_locationId: { trialId, locationId } },
-          update: { status: mapLocationStatus(siteStatus), source: 'CTGOV', lastSyncedAt: new Date() },
-          create: {
-            trialId,
-            locationId,
-            status: mapLocationStatus(siteStatus),
-            piName: study.leadPI,
-            source: 'CTGOV',
-            lastSyncedAt: new Date(),
-          },
+          update: { status, piName, source: 'CTGOV', lastSyncedAt: new Date() },
+          create: { trialId, locationId, status, piName, source: 'CTGOV', lastSyncedAt: new Date() },
         });
         summary.siteRowsWritten += 1;
       }
