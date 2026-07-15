@@ -18,7 +18,7 @@ export function TrialNode({ data }: NodeProps) {
   if (d.compact) {
     // Small card used inside the trial grid (hundreds may render at once).
     return (
-      <div className={`w-full rounded-lg border-2 bg-slate-900/90 px-2 py-1.5 shadow-lg ${accent}`}>
+      <div className={`flex h-full w-full flex-col overflow-hidden rounded-lg border-2 bg-slate-900/90 px-2 py-1.5 shadow-lg ${accent}`}>
         <Handle type="target" position={Position.Top} className="!h-1 !w-1 !bg-slate-600" />
         <div className="flex items-center justify-between gap-1">
           <span className="text-[0.55rem] font-bold uppercase tracking-wide text-blue-300">
@@ -26,10 +26,10 @@ export function TrialNode({ data }: NodeProps) {
           </span>
           {d.nctId && <span className="text-[0.55rem] text-slate-500">{d.nctId}</span>}
         </div>
-        <div className="mt-0.5 line-clamp-3 text-[0.72rem] font-semibold leading-tight text-slate-50">
+        <div className="mt-0.5 line-clamp-2 text-[0.72rem] font-semibold leading-tight text-slate-50">
           {d.title}
         </div>
-        <div className="mt-1 flex flex-wrap items-center gap-1">
+        <div className="mt-auto flex flex-wrap items-center gap-1 pt-1">
           {d.statuses.map((s, i) => (
             <span key={i} className="inline-flex items-center gap-0.5 text-[0.55rem] text-slate-300">
               <span className={`inline-block h-1.5 w-1.5 rounded-full ${DOT[s.status] ?? 'bg-slate-400'}`} />

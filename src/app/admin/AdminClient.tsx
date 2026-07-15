@@ -17,9 +17,10 @@ export function AdminClient() {
   // Admin watches the global stream so it reflects changes at any center.
   const { data, loading, connected, lastSummary } = useTreeStream({});
 
-  // Overview (counts) by default; expand when drilling in or searching.
-  const searching = !!filter.search?.trim();
-  const collapse = !focusId && !searching;
+  const diseases = useMemo(
+    () => (data?.decisionNodes ?? []).filter((n) => n.kind === 'DISEASE_TYPE').map((n) => n.label),
+    [data],
+  );
 
   const stats = useMemo(() => {
     if (!data) return null;
@@ -41,8 +42,8 @@ export function AdminClient() {
       if (node.type === 'trial') {
         const id = node.id.replace(/^trial-/, '');
         setSelected(data?.trials.find((t) => t.id === id) ?? null);
-      } else if (node.type === 'decision') {
-        setFocusId(node.id); // drill into this branch
+      } else if (node.type === 'decision' && !node.id.startsWith('phase:')) {
+        setFocusId(node.id); // drill into this branch (ignore synthetic phase groups)
         setSelected(null);
       }
     },
@@ -58,6 +59,7 @@ export function AdminClient() {
     <div className="flex h-screen w-screen overflow-hidden">
       <Sidebar
         pis={data?.principalInvestigators ?? []}
+        diseases={diseases}
         filter={filter}
         connected={connected}
         lastSummary={lastSummary}
@@ -75,7 +77,6 @@ export function AdminClient() {
           <TreeFlow
             data={data}
             filter={filter}
-            collapse={collapse}
             focusNodeId={focusId}
             onNodeClick={onNodeClick}
             onPaneClick={() => setSelected(null)}
@@ -94,7 +95,7 @@ export function AdminClient() {
               </button>
             ) : (
               <span className="rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-1.5 text-xs text-slate-400 shadow-lg">
-                Click a branch to see its trials
+                Click a branch to drill in →
               </span>
             )}
           </div>

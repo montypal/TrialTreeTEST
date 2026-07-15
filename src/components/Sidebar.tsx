@@ -5,6 +5,7 @@ import type { TreeFilter } from '@/types';
 
 type Props = {
   pis: string[];
+  diseases: string[];
   filter: TreeFilter;
   connected: boolean;
   lastSummary: string | null;
@@ -34,7 +35,7 @@ function TreeMark() {
   );
 }
 
-export function Sidebar({ pis, filter, connected, lastSummary, onChange }: Props) {
+export function Sidebar({ pis, diseases, filter, connected, lastSummary, onChange }: Props) {
   const selectCls =
     'mt-1.5 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus:border-blue-500 focus:outline-none';
 
@@ -96,6 +97,21 @@ export function Sidebar({ pis, filter, connected, lastSummary, onChange }: Props
       <div className="space-y-4 rounded-xl border border-slate-800 bg-slate-900/40 p-4">
         <div className="text-[0.65rem] font-bold uppercase tracking-wider text-slate-500">Filter</div>
         <div>
+          <label className="block text-xs font-semibold text-slate-400">Cancer type</label>
+          <select
+            className={selectCls}
+            value={filter.diseaseLabel ?? ''}
+            onChange={(e) => onChange({ ...filter, diseaseLabel: e.target.value || null })}
+          >
+            <option value="">All GU cancers</option>
+            {diseases.map((d) => (
+              <option key={d} value={d}>
+                {d}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
           <label className="block text-xs font-semibold text-slate-400">Hospital / center</label>
           <select
             className={selectCls}
@@ -127,10 +143,10 @@ export function Sidebar({ pis, filter, connected, lastSummary, onChange }: Props
           </select>
         </div>
 
-        {(filter.locationSlug || filter.pi || filter.search) && (
+        {(filter.locationSlug || filter.pi || filter.search || filter.diseaseLabel) && (
           <button
             className="w-full rounded-lg border border-slate-700 px-3 py-1.5 text-sm font-medium text-slate-300 hover:bg-slate-800"
-            onClick={() => onChange({ locationSlug: null, pi: null, search: null })}
+            onClick={() => onChange({ locationSlug: null, pi: null, search: null, diseaseLabel: null })}
           >
             Reset filters
           </button>

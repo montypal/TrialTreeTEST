@@ -21,11 +21,11 @@ const nodeTypes: NodeTypes = { decision: DecisionNode, trial: TrialNode };
 type Props = {
   data: TreeData;
   filter?: TreeFilter;
-  /** Kiosk = non-interactive, fit-to-screen, no chrome. */
+  /** Kiosk = non-interactive, fit-to-screen, no chrome (implies expandAll). */
   kiosk?: boolean;
-  /** Collapse trials into per-node counts so the whole tree fits one screen. */
-  collapse?: boolean;
-  /** Drill into a single branch (its subtree, trials expanded). */
+  /** Show the actual trial cards for everything in view (kiosk uses this). */
+  expandAll?: boolean;
+  /** Drill into a single branch. */
   focusNodeId?: string | null;
   onNodeClick?: (event: MouseEvent, node: Node) => void;
   onPaneClick?: () => void;
@@ -35,14 +35,14 @@ export function TreeFlow({
   data,
   filter = {},
   kiosk = false,
-  collapse = false,
+  expandAll = false,
   focusNodeId = null,
   onNodeClick,
   onPaneClick,
 }: Props) {
   const { nodes, edges } = useMemo(
-    () => buildTree(data, filter, { collapse, focusNodeId }),
-    [data, filter, collapse, focusNodeId],
+    () => buildTree(data, filter, { focusNodeId, expandAll: expandAll || kiosk }),
+    [data, filter, focusNodeId, expandAll, kiosk],
   );
 
   return (

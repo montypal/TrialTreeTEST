@@ -53,4 +53,6 @@ export interface TreeFilter {
   pi?: string | null;
   /** Free-text search across title / NCT / drug / PI / protocol. */
   search?: string | null;
+  /** Restrict to one disease type by its root node label ("Prostate Cancer"). */
+  diseaseLabel?: string | null;
 }

@@ -4,19 +4,20 @@ import type { TreeData, TreeFilter, TrialDTO, DecisionNodeDTO } from '@/types';
 import { centerBySlug } from '@/lib/locations';
 
 // Pure (client-safe) transform: TreeData + filter -> laid-out React Flow graph.
-// Used by both the admin canvas and the kiosk display so they stay in sync.
 //
-// Two rendering modes (there can be hundreds of real trials):
-//   • collapse=true  → structural overview: decision nodes only, each leaf shows
-//     a "N trials · M recruiting" badge. The whole tree fits on one screen.
-//   • collapse=false → trials render, wrapped into a compact GRID under each
-//     decision node (not one long horizontal row).
+// Rendering rules:
+//   • Overview (default): decision nodes only, each leaf shows a
+//     "N trials · M recruiting" badge — the whole map fits one screen.
+//   • Drill into a branch: shows the next level of grouping (counts) until you
+//     reach a "terminal" node, whose trials are grouped by PHASE into a small
+//     sub-tree (Phase III–IV / II / I) with the trial cards under each.
+//   • expandAll (kiosk) / search: shows the actual trial cards in a grid.
 
 export type DecisionNodeData = {
   label: string;
   kind: DecisionNodeDTO['kind'];
-  trialCount?: number; // set in collapsed mode
-  recruitingCount?: number; // set in collapsed mode
+  trialCount?: number;
+  recruitingCount?: number;
 };
 
 export type TrialNodeData = {
@@ -32,14 +33,32 @@ export type TrialNodeData = {
 
 const NODE_W = 220;
 const TRIAL_W = 158;
-const TRIAL_H = 104;
+const TRIAL_H = 104; // fixed card height so cards never overrun their reserved space
 const GAP = 12;
-const COLS = 4; // max trial cards per row within a group
-const HEADER_GAP = 16; // space between a decision header and its trial grid
+const COLS = 4;
+const HEADER_GAP = 16;
+
+const PHASE_ORDER = ['Phase III–IV', 'Phase II', 'Phase I / Early', 'Other / NA'];
+function phaseBucket(phase: string | null): string {
+  if (!phase) return 'Other / NA';
+  if (/IV|III/i.test(phase)) return 'Phase III–IV';
+  if (/II/i.test(phase)) return 'Phase II';
+  if (/\bI\b|early/i.test(phase)) return 'Phase I / Early';
+  return 'Other / NA';
+}
+
+/** A renderable node: a real decision node, or a synthetic phase group. */
+type RNode = {
+  id: string;
+  label: string;
+  kind: DecisionNodeDTO['kind'];
+  parentId: string | null;
+  synthetic?: boolean;
+};
 
 function trialMatchesFilter(trial: TrialDTO, filter: TreeFilter): boolean {
-  if (filter.locationSlug) {
-    if (!trial.locations.some((l) => l.locationSlug === filter.locationSlug)) return false;
+  if (filter.locationSlug && !trial.locations.some((l) => l.locationSlug === filter.locationSlug)) {
+    return false;
   }
   if (filter.pi) {
     const piHit =
@@ -68,83 +87,111 @@ function trialMatchesFilter(trial: TrialDTO, filter: TreeFilter): boolean {
 export function buildTree(
   data: TreeData,
   filter: TreeFilter = {},
-  opts: { collapse?: boolean; focusNodeId?: string | null } = {},
+  opts: { focusNodeId?: string | null; expandAll?: boolean } = {},
 ) {
-  const focusNodeId = opts.focusNodeId ?? null;
-  // Drilling into a branch always shows its trials; otherwise honor `collapse`.
-  const collapse = focusNodeId ? false : (opts.collapse ?? false);
+  const searching = !!filter.search?.trim();
+  const expandAll = !!opts.expandAll;
 
   const byId = new Map(data.decisionNodes.map((n) => [n.id, n] as const));
+  // Ignore a stale focus id (e.g. after a re-import regenerated node ids).
+  const focusNodeId = opts.focusNodeId && byId.has(opts.focusNodeId) ? opts.focusNodeId : null;
+  const childDecisions = new Map<string, string[]>();
+  for (const n of data.decisionNodes) {
+    if (!n.parentId) continue;
+    (childDecisions.get(n.parentId) ?? childDecisions.set(n.parentId, []).get(n.parentId)!).push(n.id);
+  }
 
+  // Apply data filters.
   let trials = data.trials.filter((t) => trialMatchesFilter(t, filter));
-  if (focusNodeId) {
-    // Restrict to the focused node and everything beneath it.
-    const childMap = new Map<string, string[]>();
-    for (const n of data.decisionNodes) {
-      if (!n.parentId) continue;
-      const arr = childMap.get(n.parentId) ?? [];
-      arr.push(n.id);
-      childMap.set(n.parentId, arr);
-    }
-    const inFocus = new Set<string>();
-    const stack = [focusNodeId];
-    while (stack.length) {
-      const id = stack.pop()!;
-      if (inFocus.has(id)) continue;
-      inFocus.add(id);
-      for (const c of childMap.get(id) ?? []) stack.push(c);
-    }
-    trials = trials.filter((t) => inFocus.has(t.decisionNodeId));
+  if (filter.diseaseLabel) {
+    trials = trials.filter((t) => rootLabel(t.decisionNodeId, byId) === filter.diseaseLabel);
   }
 
-  // Group surviving trials by the decision node they hang off.
-  const trialsByNode = new Map<string, TrialDTO[]>();
-  for (const t of trials) {
-    const arr = trialsByNode.get(t.decisionNodeId) ?? [];
-    arr.push(t);
-    trialsByNode.set(t.decisionNodeId, arr);
-  }
-
-  // Needed decision nodes = every ancestor of a node that holds ≥1 trial.
-  const neededNodeIds = new Set<string>();
-  for (const nodeId of trialsByNode.keys()) {
-    let cur: DecisionNodeDTO | undefined = byId.get(nodeId);
-    while (cur) {
-      neededNodeIds.add(cur.id);
-      cur = cur.parentId ? byId.get(cur.parentId) : undefined;
+  const groupByNode = (ts: TrialDTO[]) => {
+    const m = new Map<string, TrialDTO[]>();
+    for (const t of ts) (m.get(t.decisionNodeId) ?? m.set(t.decisionNodeId, []).get(t.decisionNodeId)!).push(t);
+    return m;
+  };
+  const ancestorsOf = (keys: Iterable<string>) => {
+    const need = new Set<string>();
+    for (const k of keys) {
+      let cur: DecisionNodeDTO | undefined = byId.get(k);
+      let g = 0;
+      while (cur && g++ < 12) {
+        need.add(cur.id);
+        cur = cur.parentId ? byId.get(cur.parentId) : undefined;
+      }
     }
+    return need;
+  };
+
+  // Decide the renderable node set, trials-per-node, and whether to draw grids.
+  let rnodes: RNode[] = [];
+  let trialsByNode = new Map<string, TrialDTO[]>();
+  let collapse = true;
+
+  const pushReal = (ids: Iterable<string>) => {
+    for (const id of ids) {
+      const n = byId.get(id);
+      if (n) rnodes.push({ id, label: n.label, kind: n.kind, parentId: n.parentId });
+    }
+  };
+
+  if (focusNodeId && !searching && !expandAll) {
+    const subtree = descendants(focusNodeId, childDecisions);
+    const focusTrials = trials.filter((t) => subtree.has(t.decisionNodeId));
+    const terminal = !(childDecisions.get(focusNodeId)?.length);
+
+    if (terminal) {
+      // Terminal branch: phase-group its trials into a small sub-tree.
+      collapse = false;
+      pushReal(ancestorsOf([focusNodeId])); // path root → focus (context)
+      const groups = new Map<string, TrialDTO[]>();
+      for (const t of focusTrials) {
+        const b = phaseBucket(t.phase);
+        (groups.get(b) ?? groups.set(b, []).get(b)!).push(t);
+      }
+      for (const b of PHASE_ORDER) {
+        const ts = groups.get(b);
+        if (!ts?.length) continue;
+        const sid = `phase:${focusNodeId}:${b}`;
+        rnodes.push({ id: sid, label: b, kind: 'LINE_OF_THERAPY', parentId: focusNodeId, synthetic: true });
+        trialsByNode.set(sid, ts);
+      }
+    } else {
+      // Non-terminal branch: show the next grouping level as counts.
+      collapse = true;
+      trialsByNode = groupByNode(focusTrials);
+      pushReal(ancestorsOf([...trialsByNode.keys(), focusNodeId]));
+    }
+  } else {
+    // Overview (counts) or search/kiosk (expanded trial grids).
+    collapse = !(searching || expandAll);
+    trialsByNode = groupByNode(trials);
+    pushReal(ancestorsOf(trialsByNode.keys()));
   }
 
+  const rnodeIds = new Set(rnodes.map((r) => r.id));
+
+  // --- Layout (left-to-right) ---
   const g = new dagre.graphlib.Graph();
-  // Left-to-right: disease branches stack vertically, depth grows rightward —
-  // reads like an organized outline instead of one very wide row.
   g.setGraph({ rankdir: 'LR', nodesep: 26, ranksep: 90, marginx: 30, marginy: 30 });
   g.setDefaultEdgeLabel(() => ({}));
 
   const rfNodes: Node[] = [];
   const rfEdges: Edge[] = [];
 
-  // 1. Size + register decision nodes (reserving grid space when expanded).
-  for (const n of data.decisionNodes) {
-    if (!neededNodeIds.has(n.id)) continue;
+  for (const n of rnodes) {
     const held = trialsByNode.get(n.id);
     if (!collapse && held && held.length) {
       const { gridW, gridH } = gridSize(held.length);
-      const headerH = decisionHeight(n.label, false);
-      g.setNode(n.id, { width: Math.max(NODE_W, gridW), height: headerH + HEADER_GAP + gridH });
+      g.setNode(n.id, { width: Math.max(NODE_W, gridW), height: decisionHeight(n.label, false) + HEADER_GAP + gridH });
     } else {
-      // Reserve enough height for a (possibly two-line) label + count badge so
-      // sibling boxes never overlap.
       g.setNode(n.id, { width: NODE_W, height: decisionHeight(n.label, collapse && !!held?.length) });
     }
-    if (n.parentId && neededNodeIds.has(n.parentId)) {
+    if (n.parentId && rnodeIds.has(n.parentId)) {
       g.setEdge(n.parentId, n.id);
-      rfEdges.push({
-        id: `e-${n.parentId}-${n.id}`,
-        source: n.parentId,
-        target: n.id,
-        type: 'smoothstep',
-      });
+      rfEdges.push({ id: `e-${n.parentId}-${n.id}`, source: n.parentId, target: n.id, type: 'smoothstep' });
     }
   }
 
@@ -156,16 +203,13 @@ export function buildTree(
       t.locations.some((l) => (!locSlug || l.locationSlug === locSlug) && l.status === 'RECRUITING'),
     ).length;
 
-  // 2. Emit positioned nodes.
-  for (const n of data.decisionNodes) {
-    if (!neededNodeIds.has(n.id)) continue;
+  for (const n of rnodes) {
     const p = g.node(n.id);
     const held = trialsByNode.get(n.id) ?? [];
     const boxTop = p.y - p.height / 2;
 
-    // Decision header — centered at the top of its (possibly wide) reserved box.
     const headerData: DecisionNodeData = { label: n.label, kind: n.kind };
-    if (collapse && held.length) {
+    if (held.length && (collapse || n.synthetic)) {
       headerData.trialCount = held.length;
       headerData.recruitingCount = recruitingUnder(held);
     }
@@ -177,7 +221,6 @@ export function buildTree(
       style: { width: NODE_W },
     });
 
-    // Trial grid (expanded mode only).
     if (!collapse && held.length) {
       const cols = Math.min(COLS, held.length);
       const gridW = cols * TRIAL_W + (cols - 1) * GAP;
@@ -187,12 +230,13 @@ export function buildTree(
       held.forEach((t, i) => {
         const col = i % cols;
         const row = Math.floor(i / cols);
-        const statuses = (locSlug ? t.locations.filter((l) => l.locationSlug === locSlug) : t.locations)
-          .map((l) => ({
+        const statuses = (locSlug ? t.locations.filter((l) => l.locationSlug === locSlug) : t.locations).map(
+          (l) => ({
             locationName: l.locationName,
             short: centerBySlug(l.locationSlug)?.shortName ?? l.locationName,
             status: l.status,
-          }));
+          }),
+        );
         rfNodes.push({
           id: `trial-${t.id}`,
           type: 'trial',
@@ -207,7 +251,7 @@ export function buildTree(
             cohorts: t.cohorts.map((c) => ({ label: c.label, status: c.status })),
             compact: true,
           } satisfies TrialNodeData,
-          style: { width: TRIAL_W },
+          style: { width: TRIAL_W, height: TRIAL_H },
           draggable: false,
           selectable: true,
         });
@@ -221,15 +265,33 @@ export function buildTree(
 function gridSize(k: number) {
   const cols = Math.min(COLS, k);
   const rows = Math.ceil(k / cols);
-  return {
-    gridW: cols * TRIAL_W + (cols - 1) * GAP,
-    gridH: rows * TRIAL_H + (rows - 1) * GAP,
-  };
+  return { gridW: cols * TRIAL_W + (cols - 1) * GAP, gridH: rows * TRIAL_H + (rows - 1) * GAP };
 }
 
-// Estimated rendered height of a decision box so dagre reserves enough vertical
-// room (labels can wrap to 2 lines; the count badge adds another row).
 function decisionHeight(label: string, hasCount: boolean): number {
   const lines = Math.max(1, Math.ceil(label.length / 18));
   return 46 + lines * 22 + (hasCount ? 30 : 0);
+}
+
+function descendants(rootId: string, childMap: Map<string, string[]>): Set<string> {
+  const s = new Set<string>();
+  const stack = [rootId];
+  while (stack.length) {
+    const id = stack.pop()!;
+    if (s.has(id)) continue;
+    s.add(id);
+    for (const c of childMap.get(id) ?? []) stack.push(c);
+  }
+  return s;
+}
+
+function rootLabel(nodeId: string, byId: Map<string, DecisionNodeDTO>): string | null {
+  let cur = byId.get(nodeId);
+  let root = cur;
+  let g = 0;
+  while (cur && g++ < 12) {
+    root = cur;
+    cur = cur.parentId ? byId.get(cur.parentId) : undefined;
+  }
+  return root?.label ?? null;
 }
