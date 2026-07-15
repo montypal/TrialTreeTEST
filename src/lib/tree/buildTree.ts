@@ -18,6 +18,8 @@ export type DecisionNodeData = {
   kind: DecisionNodeDTO['kind'];
   trialCount?: number;
   recruitingCount?: number;
+  /** Overrides the kind label shown on the node (e.g. "Phase" for a group). */
+  tag?: string;
 };
 
 export type TrialNodeData = {
@@ -214,6 +216,7 @@ export function buildTree(
     const p = g.node(n.id);
     const held = trialsByNode.get(n.id) ?? [];
     const headerData: DecisionNodeData = { label: n.label, kind: n.kind };
+    if (n.synthetic) headerData.tag = 'Phase';
     if (held.length && (collapse || n.synthetic)) {
       headerData.trialCount = held.length;
       headerData.recruitingCount = recruitingUnder(held);
