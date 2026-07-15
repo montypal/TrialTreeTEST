@@ -19,7 +19,7 @@ export function TrialNode({ data }: NodeProps) {
     // Small card used inside the trial grid (hundreds may render at once).
     return (
       <div className={`flex h-full w-full flex-col overflow-hidden rounded-lg border-2 bg-slate-900/90 px-2 py-1.5 shadow-lg ${accent}`}>
-        <Handle type="target" position={Position.Top} className="!h-1 !w-1 !bg-slate-600" />
+        <Handle type="target" position={Position.Left} className="!h-1 !w-1 !bg-slate-600" />
         <div className="flex items-center justify-between gap-1">
           <span className="text-[0.55rem] font-bold uppercase tracking-wide text-blue-300">
             {d.phase ?? 'Trial'}
@@ -37,7 +37,7 @@ export function TrialNode({ data }: NodeProps) {
             </span>
           ))}
         </div>
-        <Handle type="source" position={Position.Bottom} className="!h-1 !w-1 !bg-slate-600" />
+        <Handle type="source" position={Position.Right} className="!h-1 !w-1 !bg-slate-600" />
       </div>
     );
   }

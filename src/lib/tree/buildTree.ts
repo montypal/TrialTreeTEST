@@ -33,10 +33,7 @@ export type TrialNodeData = {
 
 const NODE_W = 220;
 const TRIAL_W = 158;
-const TRIAL_H = 104; // fixed card height so cards never overrun their reserved space
-const GAP = 12;
-const COLS = 4;
-const HEADER_GAP = 16;
+const TRIAL_H = 104; // fixed card height
 
 const PHASE_ORDER = ['Phase III–IV', 'Phase II', 'Phase I / Early', 'Other / NA'];
 function phaseBucket(phase: string | null): string {
@@ -172,42 +169,50 @@ export function buildTree(
   }
 
   const rnodeIds = new Set(rnodes.map((r) => r.id));
-
-  // --- Layout (left-to-right) ---
-  const g = new dagre.graphlib.Graph();
-  g.setGraph({ rankdir: 'LR', nodesep: 26, ranksep: 90, marginx: 30, marginy: 30 });
-  g.setDefaultEdgeLabel(() => ({}));
-
-  const rfNodes: Node[] = [];
-  const rfEdges: Edge[] = [];
-
-  for (const n of rnodes) {
-    const held = trialsByNode.get(n.id);
-    if (!collapse && held && held.length) {
-      const { gridW, gridH } = gridSize(held.length);
-      g.setNode(n.id, { width: Math.max(NODE_W, gridW), height: decisionHeight(n.label, false) + HEADER_GAP + gridH });
-    } else {
-      g.setNode(n.id, { width: NODE_W, height: decisionHeight(n.label, collapse && !!held?.length) });
-    }
-    if (n.parentId && rnodeIds.has(n.parentId)) {
-      g.setEdge(n.parentId, n.id);
-      rfEdges.push({ id: `e-${n.parentId}-${n.id}`, source: n.parentId, target: n.id, type: 'smoothstep' });
-    }
-  }
-
-  dagre.layout(g);
-
   const locSlug = filter.locationSlug ?? null;
   const recruitingUnder = (arr: TrialDTO[]) =>
     arr.filter((t) =>
       t.locations.some((l) => (!locSlug || l.locationSlug === locSlug) && l.status === 'RECRUITING'),
     ).length;
 
+  // --- Layout: a real left-to-right tree (dagre). Trials are their own leaf
+  //     nodes connected by branches — not packed into a grid. ---
+  const g = new dagre.graphlib.Graph();
+  g.setGraph({ rankdir: 'LR', nodesep: 16, ranksep: 70, marginx: 30, marginy: 30 });
+  g.setDefaultEdgeLabel(() => ({}));
+
+  const rfNodes: Node[] = [];
+  const rfEdges: Edge[] = [];
+
+  // Decision / group nodes + their branch edges.
+  for (const n of rnodes) {
+    const held = trialsByNode.get(n.id);
+    const showCount = !!held?.length && (collapse || n.synthetic);
+    g.setNode(n.id, { width: NODE_W, height: decisionHeight(n.label, showCount) });
+    if (n.parentId && rnodeIds.has(n.parentId)) {
+      g.setEdge(n.parentId, n.id);
+      rfEdges.push({ id: `e-${n.parentId}-${n.id}`, source: n.parentId, target: n.id, type: 'smoothstep' });
+    }
+  }
+
+  // Trial leaf nodes (only when expanded) — each branches off its group.
+  if (!collapse) {
+    for (const [holderId, ts] of trialsByNode) {
+      for (const t of ts) {
+        const tid = `trial-${t.id}`;
+        g.setNode(tid, { width: TRIAL_W, height: TRIAL_H });
+        g.setEdge(holderId, tid);
+        rfEdges.push({ id: `e-${holderId}-${tid}`, source: holderId, target: tid, type: 'smoothstep' });
+      }
+    }
+  }
+
+  dagre.layout(g);
+
+  // Emit decision / group nodes.
   for (const n of rnodes) {
     const p = g.node(n.id);
     const held = trialsByNode.get(n.id) ?? [];
-    const boxTop = p.y - p.height / 2;
-
     const headerData: DecisionNodeData = { label: n.label, kind: n.kind };
     if (held.length && (collapse || n.synthetic)) {
       headerData.trialCount = held.length;
@@ -216,20 +221,17 @@ export function buildTree(
     rfNodes.push({
       id: n.id,
       type: 'decision',
-      position: { x: p.x - NODE_W / 2, y: boxTop },
+      position: { x: p.x - p.width / 2, y: p.y - p.height / 2 },
       data: headerData,
       style: { width: NODE_W },
     });
+  }
 
-    if (!collapse && held.length) {
-      const cols = Math.min(COLS, held.length);
-      const gridW = cols * TRIAL_W + (cols - 1) * GAP;
-      const gridLeft = p.x - gridW / 2;
-      const gridTop = boxTop + decisionHeight(n.label, false) + HEADER_GAP;
-
-      held.forEach((t, i) => {
-        const col = i % cols;
-        const row = Math.floor(i / cols);
+  // Emit trial leaf nodes.
+  if (!collapse) {
+    for (const [, ts] of trialsByNode) {
+      for (const t of ts) {
+        const p = g.node(`trial-${t.id}`);
         const statuses = (locSlug ? t.locations.filter((l) => l.locationSlug === locSlug) : t.locations).map(
           (l) => ({
             locationName: l.locationName,
@@ -240,7 +242,7 @@ export function buildTree(
         rfNodes.push({
           id: `trial-${t.id}`,
           type: 'trial',
-          position: { x: gridLeft + col * (TRIAL_W + GAP), y: gridTop + row * (TRIAL_H + GAP) },
+          position: { x: p.x - TRIAL_W / 2, y: p.y - TRIAL_H / 2 },
           data: {
             title: t.title,
             phase: t.phase,
@@ -255,17 +257,11 @@ export function buildTree(
           draggable: false,
           selectable: true,
         });
-      });
+      }
     }
   }
 
   return { nodes: rfNodes, edges: rfEdges };
-}
-
-function gridSize(k: number) {
-  const cols = Math.min(COLS, k);
-  const rows = Math.ceil(k / cols);
-  return { gridW: cols * TRIAL_W + (cols - 1) * GAP, gridH: rows * TRIAL_H + (rows - 1) * GAP };
 }
 
 function decisionHeight(label: string, hasCount: boolean): number {
