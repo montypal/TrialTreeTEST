@@ -37,13 +37,42 @@ const NODE_W = 220;
 const TRIAL_W = 158;
 const TRIAL_H = 104; // fixed card height
 
-const PHASE_ORDER = ['Phase III–IV', 'Phase II', 'Phase I / Early', 'Other / NA'];
-function phaseBucket(phase: string | null): string {
-  if (!phase) return 'Other / NA';
-  if (/IV|III/i.test(phase)) return 'Phase III–IV';
-  if (/II/i.test(phase)) return 'Phase II';
-  if (/\bI\b|early/i.test(phase)) return 'Phase I / Early';
-  return 'Other / NA';
+// Group trials under a state by treatment approach — how a clinician actually
+// hunts for a trial. First match wins, so the more distinctive agent leads.
+const CLASS_ORDER = [
+  'Antibody-drug conjugate',
+  'PARP inhibitor',
+  'FGFR inhibitor',
+  'PSMA / radioligand',
+  'Gene / cell therapy',
+  'Intravesical / BCG',
+  'Immunotherapy (IO)',
+  'Hormonal (ARPI)',
+  'TKI / anti-angiogenic',
+  'Chemotherapy',
+  'Other / investigational',
+];
+
+function treatmentClass(t: TrialDTO): string {
+  const s = `${t.title} ${t.shorthand ?? ''}`.toLowerCase();
+  if (/enfortumab|sacituzumab|deruxtecan|disitamab|vedotin|govitecan|antibody.?drug conjugate|\badc\b/.test(s))
+    return 'Antibody-drug conjugate';
+  if (/olaparib|rucaparib|niraparib|talazoparib|\bparp\b/.test(s)) return 'PARP inhibitor';
+  if (/erdafitinib|\bfgfr/.test(s)) return 'FGFR inhibitor';
+  if (/lutetium|177\s?lu|lu-?177|\bpsma\b|radioligand|radiopharmaceutical|pluvicto|actinium/.test(s))
+    return 'PSMA / radioligand';
+  if (/gene therap|oncolytic|adenovir|\bcar-?t\b|nadofaragene|cretostimogene|cg\s?0070|eg-?70/.test(s))
+    return 'Gene / cell therapy';
+  if (/intravesical|\bbcg\b|tar-?20|tar-?21/.test(s)) return 'Intravesical / BCG';
+  if (/pembrolizumab|nivolumab|ipilimumab|atezolizumab|durvalumab|avelumab|cemiplimab|tislelizumab|toripalimab|retifanlimab|pd-?l?1|pd-?1|ctla-?4|checkpoint|immunotherap/.test(s))
+    return 'Immunotherapy (IO)';
+  if (/enzalutamide|abiraterone|apalutamide|darolutamide|androgen receptor|\barpi\b|\badt\b/.test(s))
+    return 'Hormonal (ARPI)';
+  if (/cabozantinib|lenvatinib|axitinib|sunitinib|pazopanib|tivozanib|belzutifan|tyrosine kinase|\btki\b|vegf/.test(s))
+    return 'TKI / anti-angiogenic';
+  if (/cisplatin|carboplatin|gemcitabine|docetaxel|cabazitaxel|paclitaxel|chemotherap/.test(s))
+    return 'Chemotherapy';
+  return 'Other / investigational';
 }
 
 /** A renderable node: a real decision node, or a synthetic phase group. */
@@ -142,18 +171,18 @@ export function buildTree(
     const terminal = !(childDecisions.get(focusNodeId)?.length);
 
     if (terminal) {
-      // Terminal branch: phase-group its trials into a small sub-tree.
+      // Terminal branch: group its trials by treatment approach into a sub-tree.
       collapse = false;
       pushReal(ancestorsOf([focusNodeId])); // path root → focus (context)
       const groups = new Map<string, TrialDTO[]>();
       for (const t of focusTrials) {
-        const b = phaseBucket(t.phase);
+        const b = treatmentClass(t);
         (groups.get(b) ?? groups.set(b, []).get(b)!).push(t);
       }
-      for (const b of PHASE_ORDER) {
+      for (const b of CLASS_ORDER) {
         const ts = groups.get(b);
         if (!ts?.length) continue;
-        const sid = `phase:${focusNodeId}:${b}`;
+        const sid = `grp:${focusNodeId}:${b}`;
         rnodes.push({ id: sid, label: b, kind: 'LINE_OF_THERAPY', parentId: focusNodeId, synthetic: true });
         trialsByNode.set(sid, ts);
       }
@@ -216,7 +245,7 @@ export function buildTree(
     const p = g.node(n.id);
     const held = trialsByNode.get(n.id) ?? [];
     const headerData: DecisionNodeData = { label: n.label, kind: n.kind };
-    if (n.synthetic) headerData.tag = 'Phase';
+    if (n.synthetic) headerData.tag = 'Approach';
     if (held.length && (collapse || n.synthetic)) {
       headerData.trialCount = held.length;
       headerData.recruitingCount = recruitingUnder(held);

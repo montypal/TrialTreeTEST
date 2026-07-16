@@ -42,8 +42,8 @@ export function AdminClient() {
       if (node.type === 'trial') {
         const id = node.id.replace(/^trial-/, '');
         setSelected(data?.trials.find((t) => t.id === id) ?? null);
-      } else if (node.type === 'decision' && !node.id.startsWith('phase:')) {
-        setFocusId(node.id); // drill into this branch (ignore synthetic phase groups)
+      } else if (node.type === 'decision' && !node.id.startsWith('grp:')) {
+        setFocusId(node.id); // drill into this branch (ignore synthetic groups)
         setSelected(null);
       }
     },
