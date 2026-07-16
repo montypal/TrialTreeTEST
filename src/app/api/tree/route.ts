@@ -46,7 +46,9 @@ export async function GET(_req: NextRequest) {
       shorthand: t.shorthand,
       title: t.title,
       phase: t.phase,
-      principalInvestigator: addPi(t.principalInvestigator),
+      // Clean the lead PI for display, but do NOT add it to the filter list —
+      // the dropdown should only offer California SITE investigators.
+      principalInvestigator: cleanPi(t.principalInvestigator),
       eligibilityCriteria: t.eligibilityCriteria,
       decisionNodeId: t.decisionNodeId,
       locations: t.locations.map((l) => ({

@@ -32,18 +32,38 @@ export function AdminClient() {
     return { total, recruiting, centers };
   }, [data]);
 
-  const focusLabel = useMemo(
-    () => data?.decisionNodes.find((n) => n.id === focusId)?.label ?? null,
-    [data, focusId],
-  );
+  // Breadcrumb trail for the stepped map view.
+  const crumbs = useMemo(() => {
+    const arr: { id: string | null; label: string }[] = [{ id: null, label: 'Cancer types' }];
+    if (!data || !focusId) return arr;
+    const nodeById = new Map(data.decisionNodes.map((n) => [n.id, n] as const));
+    const pushPath = (startId: string) => {
+      const chain: { id: string; label: string }[] = [];
+      let cur = nodeById.get(startId);
+      let g = 0;
+      while (cur && g++ < 12) {
+        chain.unshift({ id: cur.id, label: cur.label });
+        cur = cur.parentId ? nodeById.get(cur.parentId) : undefined;
+      }
+      for (const c of chain) arr.push(c);
+    };
+    if (focusId.startsWith('grp:')) {
+      const parts = focusId.split(':');
+      pushPath(parts[1]);
+      arr.push({ id: focusId, label: parts.slice(2).join(':') });
+    } else {
+      pushPath(focusId);
+    }
+    return arr;
+  }, [data, focusId]);
 
   const onNodeClick = useCallback(
     (_e: MouseEvent, node: Node) => {
       if (node.type === 'trial') {
         const id = node.id.replace(/^trial-/, '');
         setSelected(data?.trials.find((t) => t.id === id) ?? null);
-      } else if (node.type === 'decision' && !node.id.startsWith('grp:')) {
-        setFocusId(node.id);
+      } else if (node.type === 'decision') {
+        setFocusId(node.id); // drill one level (real node or grp: approach)
         setSelected(null);
       }
     },
@@ -76,6 +96,7 @@ export function AdminClient() {
           <TreeFlow
             data={data}
             filter={filter}
+            stepped
             focusNodeId={focusId}
             onNodeClick={onNodeClick}
             onPaneClick={() => setSelected(null)}
@@ -101,19 +122,25 @@ export function AdminClient() {
               </button>
             </div>
 
-            {view === 'map' &&
-              (focusId ? (
-                <button
-                  onClick={() => setFocusId(null)}
-                  className="rounded-lg border border-slate-600 bg-slate-900/90 px-3 py-1.5 text-xs font-semibold text-slate-200 shadow-lg hover:bg-slate-800"
-                >
-                  ← All branches{focusLabel ? ` · ${focusLabel}` : ''}
-                </button>
-              ) : (
-                <span className="rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-1.5 text-xs text-slate-400 shadow-lg">
-                  Click a branch to drill in →
-                </span>
-              ))}
+            {view === 'map' && (
+              <div className="pointer-events-auto flex flex-wrap items-center gap-1 rounded-lg border border-slate-700 bg-slate-900/90 px-2.5 py-1.5 text-xs shadow-lg">
+                {crumbs.map((c, i) => (
+                  <span key={`${c.id ?? 'root'}-${i}`} className="flex items-center gap-1">
+                    {i > 0 && <span className="text-slate-600">›</span>}
+                    {i < crumbs.length - 1 ? (
+                      <button
+                        onClick={() => setFocusId(c.id)}
+                        className="font-semibold text-slate-400 hover:text-white"
+                      >
+                        {c.label}
+                      </button>
+                    ) : (
+                      <span className="font-semibold text-slate-100">{c.label}</span>
+                    )}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
           {stats && (

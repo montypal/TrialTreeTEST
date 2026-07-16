@@ -78,14 +78,16 @@ function trialMatchesFilter(trial: TrialDTO, filter: TreeFilter): boolean {
 export function buildTree(
   data: TreeData,
   filter: TreeFilter = {},
-  opts: { focusNodeId?: string | null; expandAll?: boolean } = {},
+  opts: { focusNodeId?: string | null; expandAll?: boolean; stepped?: boolean } = {},
 ) {
   const searching = !!filter.search?.trim();
   const expandAll = !!opts.expandAll;
+  const stepped = !!opts.stepped;
 
   const byId = new Map(data.decisionNodes.map((n) => [n.id, n] as const));
-  // Ignore a stale focus id (e.g. after a re-import regenerated node ids).
-  const focusNodeId = opts.focusNodeId && byId.has(opts.focusNodeId) ? opts.focusNodeId : null;
+  // Keep synthetic "grp:" ids; ignore a stale real id (e.g. after a re-import).
+  const rawFocus = opts.focusNodeId ?? null;
+  const focusNodeId = rawFocus && (rawFocus.startsWith('grp:') || byId.has(rawFocus)) ? rawFocus : null;
   const childDecisions = new Map<string, string[]>();
   for (const n of data.decisionNodes) {
     if (!n.parentId) continue;
@@ -128,7 +130,74 @@ export function buildTree(
     }
   };
 
-  if (focusNodeId && !searching && !expandAll) {
+  if (stepped && !searching && !expandAll) {
+    // Stepped map: show ONE level at a time — the current node and its immediate
+    // children as counts (or, at a treatment-approach group, the trials).
+    const directByNode = new Map<string, TrialDTO[]>();
+    for (const t of trials) {
+      (directByNode.get(t.decisionNodeId) ?? directByNode.set(t.decisionNodeId, []).get(t.decisionNodeId)!).push(t);
+    }
+    const subCache = new Map<string, TrialDTO[]>();
+    const subtreeTrials = (id: string): TrialDTO[] => {
+      const hit = subCache.get(id);
+      if (hit) return hit;
+      const all = [
+        ...(directByNode.get(id) ?? []),
+        ...(childDecisions.get(id) ?? []).flatMap((c) => subtreeTrials(c)),
+      ];
+      subCache.set(id, all);
+      return all;
+    };
+
+    if (focusNodeId && focusNodeId.startsWith('grp:')) {
+      // Treatment-approach group → show it + its trials.
+      const parts = focusNodeId.split(':');
+      const stateId = parts[1];
+      const cls = parts.slice(2).join(':');
+      const ts = (directByNode.get(stateId) ?? []).filter((t) => treatmentClass(t) === cls);
+      rnodes.push({ id: focusNodeId, label: cls, kind: 'LINE_OF_THERAPY', parentId: null, synthetic: true });
+      trialsByNode.set(focusNodeId, ts);
+      collapse = false;
+    } else if (focusNodeId) {
+      // A disease / state / biomarker node → show it + its next level (counts).
+      const node = byId.get(focusNodeId)!;
+      rnodes.push({ id: node.id, label: node.label, kind: node.kind, parentId: null });
+      trialsByNode.set(node.id, subtreeTrials(node.id));
+      // Sub-branches that are further decision nodes (e.g. biomarkers)…
+      for (const id of childDecisions.get(focusNodeId) ?? []) {
+        const k = byId.get(id)!;
+        if (subtreeTrials(k.id).length === 0) continue;
+        rnodes.push({ id: k.id, label: k.label, kind: k.kind, parentId: node.id });
+        trialsByNode.set(k.id, subtreeTrials(k.id));
+      }
+      // …plus treatment-approach groups for trials sitting directly on this node.
+      const own = directByNode.get(focusNodeId) ?? [];
+      if (own.length) {
+        const groups = new Map<string, TrialDTO[]>();
+        for (const t of own) {
+          const c = treatmentClass(t);
+          (groups.get(c) ?? groups.set(c, []).get(c)!).push(t);
+        }
+        for (const c of CLASS_ORDER) {
+          const ts = groups.get(c);
+          if (!ts?.length) continue;
+          rnodes.push({ id: `grp:${focusNodeId}:${c}`, label: c, kind: 'LINE_OF_THERAPY', parentId: node.id, synthetic: true });
+          trialsByNode.set(`grp:${focusNodeId}:${c}`, ts);
+        }
+      }
+      collapse = true;
+    } else {
+      // Top level → the cancer-type choices.
+      let roots = data.decisionNodes.filter((n) => !n.parentId);
+      if (filter.diseaseLabel) roots = roots.filter((n) => n.label === filter.diseaseLabel);
+      for (const r of roots) {
+        if (subtreeTrials(r.id).length === 0) continue;
+        rnodes.push({ id: r.id, label: r.label, kind: r.kind, parentId: null });
+        trialsByNode.set(r.id, subtreeTrials(r.id));
+      }
+      collapse = true;
+    }
+  } else if (focusNodeId && !searching && !expandAll) {
     const subtree = descendants(focusNodeId, childDecisions);
     const focusTrials = trials.filter((t) => subtree.has(t.decisionNodeId));
     const terminal = !(childDecisions.get(focusNodeId)?.length);

@@ -25,6 +25,8 @@ type Props = {
   kiosk?: boolean;
   /** Show the actual trial cards for everything in view (kiosk uses this). */
   expandAll?: boolean;
+  /** Stepped drill-down: one level at a time (cancer → state → approach → trials). */
+  stepped?: boolean;
   /** Drill into a single branch. */
   focusNodeId?: string | null;
   onNodeClick?: (event: MouseEvent, node: Node) => void;
@@ -36,13 +38,14 @@ export function TreeFlow({
   filter = {},
   kiosk = false,
   expandAll = false,
+  stepped = false,
   focusNodeId = null,
   onNodeClick,
   onPaneClick,
 }: Props) {
   const { nodes, edges } = useMemo(
-    () => buildTree(data, filter, { focusNodeId, expandAll: expandAll || kiosk }),
-    [data, filter, focusNodeId, expandAll, kiosk],
+    () => buildTree(data, filter, { focusNodeId, expandAll: expandAll || kiosk, stepped }),
+    [data, filter, focusNodeId, expandAll, kiosk, stepped],
   );
 
   return (
