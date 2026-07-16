@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from 'react';
 import type { MouseEvent } from 'react';
 import type { Node } from '@xyflow/react';
 import { TreeFlow } from '@/components/TreeFlow';
+import { OutlineBrowser } from '@/components/OutlineBrowser';
 import { Sidebar } from '@/components/Sidebar';
 import { DevTools } from '@/components/DevTools';
 import { TrialDetail } from '@/components/TrialDetail';
@@ -12,6 +13,7 @@ import type { TreeFilter, TrialDTO } from '@/types';
 
 export function AdminClient() {
   const [filter, setFilter] = useState<TreeFilter>({ locationSlug: null, pi: null });
+  const [view, setView] = useState<'outline' | 'map'>('outline');
   const [focusId, setFocusId] = useState<string | null>(null);
   const [selected, setSelected] = useState<TrialDTO | null>(null);
   // Admin watches the global stream so it reflects changes at any center.
@@ -25,9 +27,7 @@ export function AdminClient() {
   const stats = useMemo(() => {
     if (!data) return null;
     const total = data.trials.length;
-    const recruiting = data.trials.filter((t) =>
-      t.locations.some((l) => l.status === 'RECRUITING'),
-    ).length;
+    const recruiting = data.trials.filter((t) => t.locations.some((l) => l.status === 'RECRUITING')).length;
     const centers = new Set(data.trials.flatMap((t) => t.locations.map((l) => l.locationSlug))).size;
     return { total, recruiting, centers };
   }, [data]);
@@ -43,17 +43,12 @@ export function AdminClient() {
         const id = node.id.replace(/^trial-/, '');
         setSelected(data?.trials.find((t) => t.id === id) ?? null);
       } else if (node.type === 'decision' && !node.id.startsWith('grp:')) {
-        setFocusId(node.id); // drill into this branch (ignore synthetic groups)
+        setFocusId(node.id);
         setSelected(null);
       }
     },
     [data],
   );
-
-  const resetView = () => {
-    setFocusId(null);
-    setSelected(null);
-  };
 
   return (
     <div className="flex h-screen w-screen overflow-hidden">
@@ -71,7 +66,11 @@ export function AdminClient() {
       <main className="relative flex-1">
         {loading || !data ? (
           <div className="flex h-full items-center justify-center text-xl text-slate-500">
-            Loading trial map…
+            Loading trials…
+          </div>
+        ) : view === 'outline' ? (
+          <div className="h-full pt-16">
+            <OutlineBrowser data={data} filter={filter} onSelectTrial={setSelected} />
           </div>
         ) : (
           <TreeFlow
@@ -83,21 +82,38 @@ export function AdminClient() {
           />
         )}
 
-        {/* Top bar: stats + breadcrumb */}
+        {/* Top bar */}
         <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-center justify-between gap-3 p-4">
           <div className="pointer-events-auto flex items-center gap-2">
-            {focusId ? (
+            {/* View toggle */}
+            <div className="flex overflow-hidden rounded-lg border border-slate-700 bg-slate-900/90 text-xs font-semibold shadow-lg">
               <button
-                onClick={resetView}
-                className="rounded-lg border border-slate-600 bg-slate-900/90 px-3 py-1.5 text-xs font-semibold text-slate-200 shadow-lg hover:bg-slate-800"
+                onClick={() => setView('outline')}
+                className={`px-3 py-1.5 ${view === 'outline' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'}`}
               >
-                ← All branches{focusLabel ? ` · ${focusLabel}` : ''}
+                ☰ Outline
               </button>
-            ) : (
-              <span className="rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-1.5 text-xs text-slate-400 shadow-lg">
-                Click a branch to drill in →
-              </span>
-            )}
+              <button
+                onClick={() => setView('map')}
+                className={`px-3 py-1.5 ${view === 'map' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'}`}
+              >
+                ⊹ Map
+              </button>
+            </div>
+
+            {view === 'map' &&
+              (focusId ? (
+                <button
+                  onClick={() => setFocusId(null)}
+                  className="rounded-lg border border-slate-600 bg-slate-900/90 px-3 py-1.5 text-xs font-semibold text-slate-200 shadow-lg hover:bg-slate-800"
+                >
+                  ← All branches{focusLabel ? ` · ${focusLabel}` : ''}
+                </button>
+              ) : (
+                <span className="rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-1.5 text-xs text-slate-400 shadow-lg">
+                  Click a branch to drill in →
+                </span>
+              ))}
           </div>
 
           {stats && (
