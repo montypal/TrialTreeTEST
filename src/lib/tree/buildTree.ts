@@ -181,7 +181,7 @@ export function buildTree(
   // Decision / group nodes + their branch edges.
   for (const n of rnodes) {
     const held = trialsByNode.get(n.id);
-    const showCount = !!held?.length && (collapse || n.synthetic);
+    const showCount = !!held?.length && (collapse || !!n.synthetic);
     g.setNode(n.id, { width: NODE_W, height: decisionHeight(n.label, showCount) });
     if (n.parentId && rnodeIds.has(n.parentId)) {
       g.setEdge(n.parentId, n.id);
