@@ -13,7 +13,8 @@ import type { TreeFilter, TrialDTO } from '@/types';
 
 export function AdminClient() {
   const [filter, setFilter] = useState<TreeFilter>({ locationSlug: null, pi: null });
-  const [view, setView] = useState<'outline' | 'map'>('outline');
+  const [view, setView] = useState<'outline' | 'map'>('map');
+  const [entered, setEntered] = useState(false);
   const [focusId, setFocusId] = useState<string | null>(null);
   const [selected, setSelected] = useState<TrialDTO | null>(null);
   // Admin watches the global stream so it reflects changes at any center.
@@ -32,11 +33,16 @@ export function AdminClient() {
     return { total, recruiting, centers };
   }, [data]);
 
-  // Breadcrumb trail for the stepped map view.
+  // Breadcrumb for the stepped map — reflects the selected cancer + drill path.
   const crumbs = useMemo(() => {
     const arr: { id: string | null; label: string }[] = [{ id: null, label: 'Cancer types' }];
-    if (!data || !focusId) return arr;
+    if (!data) return arr;
     const nodeById = new Map(data.decisionNodes.map((n) => [n.id, n] as const));
+    const diseaseNodeId = filter.diseaseLabel
+      ? (data.decisionNodes.find((n) => !n.parentId && n.label === filter.diseaseLabel)?.id ?? null)
+      : null;
+    const eff = focusId ?? diseaseNodeId;
+    if (!eff) return arr;
     const pushPath = (startId: string) => {
       const chain: { id: string; label: string }[] = [];
       let cur = nodeById.get(startId);
@@ -47,15 +53,15 @@ export function AdminClient() {
       }
       for (const c of chain) arr.push(c);
     };
-    if (focusId.startsWith('grp:')) {
-      const parts = focusId.split(':');
+    if (eff.startsWith('grp:')) {
+      const parts = eff.split(':');
       pushPath(parts[1]);
-      arr.push({ id: focusId, label: parts.slice(2).join(':') });
+      arr.push({ id: eff, label: parts.slice(2).join(':') });
     } else {
-      pushPath(focusId);
+      pushPath(eff);
     }
     return arr;
-  }, [data, focusId]);
+  }, [data, focusId, filter.diseaseLabel]);
 
   const onNodeClick = useCallback(
     (_e: MouseEvent, node: Node) => {
@@ -69,6 +75,12 @@ export function AdminClient() {
     },
     [data],
   );
+
+  const chooseCancer = (label: string | null) => {
+    setFilter((f) => ({ ...f, diseaseLabel: label }));
+    setFocusId(null);
+    setEntered(true);
+  };
 
   return (
     <div className="flex h-screen w-screen overflow-hidden">
@@ -103,22 +115,46 @@ export function AdminClient() {
           />
         )}
 
+        {/* Entry prompt: pick a cancer type to explore. */}
+        {!loading && data && !entered && (
+          <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-slate-950/97 p-6 text-center">
+            <div className="text-3xl font-extrabold tracking-tight text-slate-50">Welcome to TrialTree</div>
+            <p className="mt-2 text-slate-400">Which cancer would you like to explore?</p>
+            <div className="mt-7 flex flex-wrap justify-center gap-4">
+              {diseases.map((d) => (
+                <button
+                  key={d}
+                  onClick={() => chooseCancer(d)}
+                  className="min-w-[180px] rounded-2xl border border-blue-500/40 bg-blue-500/10 px-8 py-6 text-lg font-bold text-slate-100 transition hover:border-blue-400 hover:bg-blue-500/20"
+                >
+                  {d}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => chooseCancer(null)}
+              className="mt-6 text-sm font-semibold text-slate-400 hover:text-slate-200"
+            >
+              Or view all GU cancers →
+            </button>
+          </div>
+        )}
+
         {/* Top bar */}
         <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-center justify-between gap-3 p-4">
           <div className="pointer-events-auto flex items-center gap-2">
-            {/* View toggle */}
             <div className="flex overflow-hidden rounded-lg border border-slate-700 bg-slate-900/90 text-xs font-semibold shadow-lg">
-              <button
-                onClick={() => setView('outline')}
-                className={`px-3 py-1.5 ${view === 'outline' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'}`}
-              >
-                ☰ Outline
-              </button>
               <button
                 onClick={() => setView('map')}
                 className={`px-3 py-1.5 ${view === 'map' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'}`}
               >
                 ⊹ Map
+              </button>
+              <button
+                onClick={() => setView('outline')}
+                className={`px-3 py-1.5 ${view === 'outline' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'}`}
+              >
+                ☰ Outline
               </button>
             </div>
 
@@ -129,7 +165,10 @@ export function AdminClient() {
                     {i > 0 && <span className="text-slate-600">›</span>}
                     {i < crumbs.length - 1 ? (
                       <button
-                        onClick={() => setFocusId(c.id)}
+                        onClick={() => {
+                          if (c.id === null) setFilter((f) => ({ ...f, diseaseLabel: null }));
+                          setFocusId(c.id);
+                        }}
                         className="font-semibold text-slate-400 hover:text-white"
                       >
                         {c.label}

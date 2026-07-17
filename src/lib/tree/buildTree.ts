@@ -149,29 +149,36 @@ export function buildTree(
       return all;
     };
 
-    if (focusNodeId && focusNodeId.startsWith('grp:')) {
+    // If a cancer type is selected in the filter, treat it as the entry point
+    // (its states are the first level) so you skip the single-card step.
+    const diseaseNodeId = filter.diseaseLabel
+      ? (data.decisionNodes.find((n) => !n.parentId && n.label === filter.diseaseLabel)?.id ?? null)
+      : null;
+    const eff = focusNodeId ?? diseaseNodeId;
+
+    if (eff && eff.startsWith('grp:')) {
       // Treatment-approach group → show it + its trials.
-      const parts = focusNodeId.split(':');
+      const parts = eff.split(':');
       const stateId = parts[1];
       const cls = parts.slice(2).join(':');
       const ts = (directByNode.get(stateId) ?? []).filter((t) => treatmentClass(t) === cls);
-      rnodes.push({ id: focusNodeId, label: cls, kind: 'LINE_OF_THERAPY', parentId: null, synthetic: true });
-      trialsByNode.set(focusNodeId, ts);
+      rnodes.push({ id: eff, label: cls, kind: 'LINE_OF_THERAPY', parentId: null, synthetic: true });
+      trialsByNode.set(eff, ts);
       collapse = false;
-    } else if (focusNodeId) {
-      // A disease / state / biomarker node → show it + its next level (counts).
-      const node = byId.get(focusNodeId)!;
+    } else if (eff) {
+      // A cancer / state / biomarker node → show it + its next level (counts).
+      const node = byId.get(eff)!;
       rnodes.push({ id: node.id, label: node.label, kind: node.kind, parentId: null });
       trialsByNode.set(node.id, subtreeTrials(node.id));
       // Sub-branches that are further decision nodes (e.g. biomarkers)…
-      for (const id of childDecisions.get(focusNodeId) ?? []) {
+      for (const id of childDecisions.get(eff) ?? []) {
         const k = byId.get(id)!;
         if (subtreeTrials(k.id).length === 0) continue;
         rnodes.push({ id: k.id, label: k.label, kind: k.kind, parentId: node.id });
         trialsByNode.set(k.id, subtreeTrials(k.id));
       }
       // …plus treatment-approach groups for trials sitting directly on this node.
-      const own = directByNode.get(focusNodeId) ?? [];
+      const own = directByNode.get(eff) ?? [];
       if (own.length) {
         const groups = new Map<string, TrialDTO[]>();
         for (const t of own) {
@@ -181,16 +188,14 @@ export function buildTree(
         for (const c of CLASS_ORDER) {
           const ts = groups.get(c);
           if (!ts?.length) continue;
-          rnodes.push({ id: `grp:${focusNodeId}:${c}`, label: c, kind: 'LINE_OF_THERAPY', parentId: node.id, synthetic: true });
-          trialsByNode.set(`grp:${focusNodeId}:${c}`, ts);
+          rnodes.push({ id: `grp:${eff}:${c}`, label: c, kind: 'LINE_OF_THERAPY', parentId: node.id, synthetic: true });
+          trialsByNode.set(`grp:${eff}:${c}`, ts);
         }
       }
       collapse = true;
     } else {
       // Top level → the cancer-type choices.
-      let roots = data.decisionNodes.filter((n) => !n.parentId);
-      if (filter.diseaseLabel) roots = roots.filter((n) => n.label === filter.diseaseLabel);
-      for (const r of roots) {
+      for (const r of data.decisionNodes.filter((n) => !n.parentId)) {
         if (subtreeTrials(r.id).length === 0) continue;
         rnodes.push({ id: r.id, label: r.label, kind: r.kind, parentId: null });
         trialsByNode.set(r.id, subtreeTrials(r.id));
