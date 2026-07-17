@@ -117,7 +117,7 @@ export function AdminClient() {
 
         {/* Entry prompt: pick a cancer type to explore. */}
         {!loading && data && !entered && (
-          <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-slate-950/97 p-6 text-center">
+          <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-950 p-6 text-center">
             <div className="text-3xl font-extrabold tracking-tight text-slate-50">Welcome to TrialTree</div>
             <p className="mt-2 text-slate-400">Which cancer would you like to explore?</p>
             <div className="mt-7 flex flex-wrap justify-center gap-4">
