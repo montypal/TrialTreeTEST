@@ -22,7 +22,7 @@ export function QRCodeBlock({ locationSlug, smsNumber }: Props) {
   const href = `sms:${number}?&body=${encodeURIComponent(body)}`;
 
   return (
-    <div className="flex items-center gap-4 rounded-2xl border border-slate-600 bg-white/95 p-4 shadow-2xl">
+    <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-xl">
       <QRCodeSVG value={href} size={132} level="M" marginSize={2} />
       <div className="max-w-[200px] text-slate-900">
         <div className="text-lg font-extrabold leading-tight">Update this board</div>

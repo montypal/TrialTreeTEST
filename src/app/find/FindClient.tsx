@@ -21,9 +21,9 @@ const EXAMPLES = [
 ];
 
 const FIT_STYLE: Record<Match['fit'], string> = {
-  strong: 'bg-green-500/20 text-green-300 border-green-500/40',
-  possible: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
-  weak: 'bg-slate-600/30 text-slate-300 border-slate-500/40',
+  strong: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  possible: 'bg-amber-50 text-amber-700 border-amber-200',
+  weak: 'bg-slate-100 text-slate-600 border-slate-200',
 };
 
 export function FindClient() {
@@ -55,20 +55,20 @@ export function FindClient() {
   };
 
   return (
-    <main className="relative mx-auto max-w-3xl px-6 py-10">
+    <main className="relative mx-auto max-w-3xl px-6 py-10 text-slate-800">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-extrabold tracking-tight">Find a trial</h1>
-        <Link href="/admin" className="text-sm text-blue-400 hover:underline">
+        <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">Find a trial</h1>
+        <Link href="/admin" className="text-sm text-blue-600 hover:underline">
           Full tree →
         </Link>
       </div>
-      <p className="mt-2 text-slate-300">
+      <p className="mt-2 text-slate-600">
         Describe the clinical situation in plain language and the assistant will surface potential GU
         oncology trials across City of Hope, UCLA, UCSD, UCI, and USC — ranked, with the reasoning.
       </p>
 
       {/* PHI / safety notice */}
-      <div className="mt-4 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-200">
+      <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
         <strong>Do not enter identifiers.</strong> No names, dates of birth, MRNs, or addresses —
         describe the clinical scenario only (age range, disease, prior therapy, biomarkers, ECOG).
         This is decision support, not medical advice or an eligibility determination.
@@ -82,30 +82,30 @@ export function FindClient() {
         }}
         rows={5}
         placeholder="e.g. 72-year-old with mCRPC, HRR/BRCA2-mutated, progressed on ARPI, ECOG 0–1…"
-        className="mt-4 w-full resize-y rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm leading-relaxed focus:border-blue-500 focus:outline-none"
+        className="mt-4 w-full resize-y rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm leading-relaxed text-slate-800 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-200"
       />
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <button
           onClick={search}
           disabled={loading || !query.trim()}
-          className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
+          className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
         >
           {loading ? 'Searching the catalog…' : 'Find matching trials'}
         </button>
-        <span className="text-xs text-slate-500">⌘/Ctrl + Enter</span>
+        <span className="text-xs text-slate-400">⌘/Ctrl + Enter</span>
       </div>
 
       {/* Example chips */}
       {!result && !loading && (
         <div className="mt-5">
-          <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">Try an example</div>
+          <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">Try an example</div>
           <div className="mt-2 space-y-2">
             {EXAMPLES.map((ex) => (
               <button
                 key={ex}
                 onClick={() => setQuery(ex)}
-                className="block w-full rounded-lg border border-slate-800 bg-slate-900/50 px-3 py-2 text-left text-sm text-slate-300 hover:border-slate-600"
+                className="block w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-left text-sm text-slate-600 hover:border-slate-300 hover:bg-slate-50"
               >
                 {ex}
               </button>
@@ -115,21 +115,21 @@ export function FindClient() {
       )}
 
       {error && (
-        <div className="mt-5 rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-200">
+        <div className="mt-5 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
           {error}
         </div>
       )}
 
       {loading && (
-        <div className="mt-8 flex items-center gap-3 text-slate-400">
-          <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-600 border-t-blue-400" />
+        <div className="mt-8 flex items-center gap-3 text-slate-500">
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-200 border-t-blue-500" />
           Reading the scenario against every recruiting trial…
         </div>
       )}
 
       {result && (
         <section className="mt-8">
-          <p className="rounded-lg border border-slate-800 bg-slate-900/50 p-4 text-sm text-slate-200">
+          <p className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-700 shadow-sm">
             {result.summary}
           </p>
 
@@ -137,36 +137,36 @@ export function FindClient() {
             {result.matches.map((m) => {
               const recruiting = m.trial.locations.filter((l) => l.status === 'RECRUITING');
               return (
-                <article key={m.trial.id} className="rounded-xl border border-slate-700 bg-slate-900/70 p-4">
+                <article key={m.trial.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className={`rounded-full border px-2 py-0.5 text-[0.7rem] font-bold uppercase ${FIT_STYLE[m.fit]}`}>
                       {m.fit} match
                     </span>
-                    <span className="text-xs text-slate-500">{m.trial.phase ?? 'Phase N/A'}</span>
-                    {m.trial.nctId && <span className="text-xs text-slate-500">· {m.trial.nctId}</span>}
+                    <span className="text-xs text-slate-400">{m.trial.phase ?? 'Phase N/A'}</span>
+                    {m.trial.nctId && <span className="text-xs text-slate-400">· {m.trial.nctId}</span>}
                   </div>
 
-                  <h3 className="mt-1.5 font-bold leading-snug text-slate-50">{m.trial.title}</h3>
-                  <div className="text-xs text-slate-500">{m.path}</div>
+                  <h3 className="mt-1.5 font-bold leading-snug text-slate-900">{m.trial.title}</h3>
+                  <div className="text-xs text-slate-400">{m.path}</div>
 
-                  <p className="mt-2 text-sm text-slate-300">
-                    <span className="font-semibold text-slate-200">Why: </span>
+                  <p className="mt-2 text-sm text-slate-700">
+                    <span className="font-semibold text-slate-900">Why: </span>
                     {m.rationale}
                   </p>
-                  <p className="mt-1 text-sm text-slate-400">
-                    <span className="font-semibold text-slate-300">Verify: </span>
+                  <p className="mt-1 text-sm text-slate-600">
+                    <span className="font-semibold text-slate-800">Verify: </span>
                     {m.considerations}
                   </p>
 
                   {recruiting.length > 0 && (
-                    <div className="mt-2 text-xs text-green-300">
+                    <div className="mt-2 text-xs font-medium text-emerald-700">
                       Recruiting at: {recruiting.map((l) => l.locationName).join(', ')}
                     </div>
                   )}
 
                   <button
                     onClick={() => setSelected(m.trial)}
-                    className="mt-3 rounded-lg border border-slate-600 px-3 py-1.5 text-xs font-semibold hover:bg-slate-800"
+                    className="mt-3 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100"
                   >
                     Full details →
                   </button>
@@ -174,16 +174,16 @@ export function FindClient() {
               );
             })}
             {result.matches.length === 0 && (
-              <div className="rounded-lg border border-slate-800 bg-slate-900/40 p-4 text-sm text-slate-400">
+              <div className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-500">
                 No clear matches in the current catalog. Try adding detail (biomarkers, prior lines),
-                or browse the <Link href="/admin" className="text-blue-400 hover:underline">full tree</Link>.
+                or browse the <Link href="/admin" className="text-blue-600 hover:underline">full tree</Link>.
               </div>
             )}
           </div>
         </section>
       )}
 
-      <p className="mt-10 text-xs text-slate-600">
+      <p className="mt-10 text-xs text-slate-400">
         Matches are AI-generated decision support and may be incomplete or wrong. Confirm eligibility
         against the full protocol and the study team before acting.
       </p>

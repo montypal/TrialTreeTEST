@@ -71,9 +71,9 @@ export function TreeFlow({
         zoomOnDoubleClick={!kiosk}
         preventScrolling={!kiosk}
       >
-        <Background gap={kiosk ? 28 : 18} color={kiosk ? '#1c2533' : '#202a3a'} />
+        <Background gap={kiosk ? 28 : 18} color="#e2e8f0" />
         {!kiosk && <Controls showInteractive={false} />}
-        {!kiosk && <MiniMap pannable zoomable className="!bg-slate-900" />}
+        {!kiosk && <MiniMap pannable zoomable className="!bg-white" maskColor="rgba(148,163,184,0.15)" />}
         {/* Re-frame the whole tree whenever its structure changes — a live
             update on a kiosk, or a toggle/filter change on admin — so it never
             drifts off-screen. Keyed on node count so it doesn't fight the user's

@@ -40,26 +40,26 @@ export function KioskClient({ locationSlug }: { locationSlug: string }) {
 
   return (
     <div
-      className={`kiosk relative flex h-screen w-screen flex-col overflow-hidden ${eink ? 'eink' : ''} ${
+      className={`kiosk relative flex h-screen w-screen flex-col overflow-hidden bg-[#f6f7f9] text-slate-800 ${eink ? 'eink' : ''} ${
         flash && !eink ? 'animate-flash' : ''
       }`}
     >
       {/* Header band — high contrast, readable from 5–10 ft */}
-      <header className="flex items-center justify-between border-b border-slate-700 px-8 py-5">
+      <header className="flex items-center justify-between border-b border-slate-200 bg-white px-8 py-5">
         <div>
-          <div className="text-sm font-bold uppercase tracking-[0.3em] text-blue-300">
+          <div className="text-sm font-bold uppercase tracking-[0.3em] text-blue-600">
             GU Oncology Trials
           </div>
-          <h1 className="text-4xl font-extrabold tracking-tight">{locationLabel(locationSlug)}</h1>
+          <h1 className="text-4xl font-extrabold tracking-tight text-slate-900">{locationLabel(locationSlug)}</h1>
         </div>
         <div className="text-right">
-          <div className="text-5xl font-black tabular-nums text-green-400">{recruitingCount}</div>
+          <div className="text-5xl font-black tabular-nums text-emerald-600">{recruitingCount}</div>
           <div className="text-sm font-semibold uppercase tracking-widest text-slate-400">
             Actively recruiting
           </div>
           <div className="mt-1 flex items-center justify-end gap-2 text-xs text-slate-500">
             <span
-              className={`inline-block h-2 w-2 rounded-full ${connected ? 'bg-green-500' : 'bg-slate-500'}`}
+              className={`inline-block h-2 w-2 rounded-full ${connected ? 'bg-emerald-500' : 'bg-slate-400'}`}
             />
             {connected ? 'Live' : 'Reconnecting…'}
           </div>
@@ -69,15 +69,15 @@ export function KioskClient({ locationSlug }: { locationSlug: string }) {
       {/* The tree */}
       <div className="relative flex-1">
         {loading || !data ? (
-          <div className="flex h-full items-center justify-center text-2xl text-slate-500">
+          <div className="flex h-full items-center justify-center text-2xl text-slate-400">
             Loading trial map…
           </div>
         ) : trialsHere === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
-            <div className="text-3xl font-bold text-slate-300">
+            <div className="text-3xl font-bold text-slate-500">
               No GU oncology trials mapped here yet
             </div>
-            <div className="text-xl text-slate-500">
+            <div className="text-xl text-slate-400">
               Scan the code below to add this center&apos;s first trial.
             </div>
           </div>
@@ -87,7 +87,7 @@ export function KioskClient({ locationSlug }: { locationSlug: string }) {
 
         {/* Live-update toast */}
         {flash && lastSummary && (
-          <div className="absolute left-1/2 top-6 -translate-x-1/2 rounded-full bg-green-600 px-6 py-2 text-lg font-bold text-white shadow-2xl">
+          <div className="absolute left-1/2 top-6 -translate-x-1/2 rounded-full bg-emerald-600 px-6 py-2 text-lg font-bold text-white shadow-xl">
             ↻ {lastSummary}
           </div>
         )}

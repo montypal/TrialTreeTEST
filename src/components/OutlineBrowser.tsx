@@ -6,16 +6,16 @@ import { treatmentClass, CLASS_ORDER } from '@/lib/treatmentClass';
 import { centerBySlug } from '@/lib/locations';
 
 const DOT: Record<string, string> = {
-  RECRUITING: 'bg-green-400',
-  WAITLISTED: 'bg-yellow-400',
-  CLOSED: 'bg-slate-500',
-  SUSPENDED: 'bg-red-400',
+  RECRUITING: 'bg-emerald-500',
+  WAITLISTED: 'bg-amber-500',
+  CLOSED: 'bg-slate-400',
+  SUSPENDED: 'bg-rose-500',
 };
 const KIND_ACCENT: Record<string, string> = {
-  DISEASE_TYPE: 'text-blue-300',
-  DISEASE_STATE: 'text-violet-300',
-  BIOMARKER: 'text-emerald-300',
-  LINE_OF_THERAPY: 'text-amber-300',
+  DISEASE_TYPE: 'text-blue-700',
+  DISEASE_STATE: 'text-violet-700',
+  BIOMARKER: 'text-emerald-700',
+  LINE_OF_THERAPY: 'text-amber-700',
 };
 const KIND_TAG: Record<string, string> = {
   DISEASE_TYPE: 'Cancer',
@@ -163,9 +163,9 @@ export function OutlineBrowser({
 
   return (
     <div className="h-full overflow-y-auto px-4 py-5">
-      <div className="mx-auto max-w-3xl">
+      <div className="mx-auto max-w-3xl rounded-xl border border-slate-200 bg-white p-2 shadow-sm">
         {empty ? (
-          <div className="py-20 text-center text-slate-500">No trials match your filters.</div>
+          <div className="py-20 text-center text-slate-400">No trials match your filters.</div>
         ) : (
           roots.map((r) => renderNode(r, 0))
         )}
@@ -196,18 +196,20 @@ function Row({
   return (
     <button
       onClick={onClick}
-      className="flex w-full items-center gap-2 rounded-lg py-2 pr-3 text-left hover:bg-slate-800/50"
+      className="flex w-full items-center gap-2 rounded-lg py-2 pr-3 text-left hover:bg-slate-100"
       style={{ paddingLeft: 10 + depth * 20 }}
     >
-      <span className={`inline-block w-3 shrink-0 text-slate-500 transition-transform ${open ? 'rotate-90' : ''}`}>
+      <span className={`inline-block w-3 shrink-0 text-slate-400 transition-transform ${open ? 'rotate-90' : ''}`}>
         ▸
       </span>
       <span className={`text-[0.58rem] font-bold uppercase tracking-wider ${accent}`}>{tag}</span>
-      <span className="truncate font-semibold text-slate-100">{label}</span>
+      <span className="truncate font-semibold text-slate-800">{label}</span>
       <span className="ml-auto flex shrink-0 items-center gap-1.5 text-xs">
-        <span className="rounded-full bg-slate-700/70 px-2 py-0.5 text-slate-300">{count}</span>
+        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-600 ring-1 ring-slate-200">{count}</span>
         {rec > 0 && (
-          <span className="rounded-full bg-green-500/20 px-2 py-0.5 text-green-300">{rec} recruiting</span>
+          <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-700 ring-1 ring-emerald-200">
+            {rec} recruiting
+          </span>
         )}
       </span>
     </button>
@@ -218,26 +220,26 @@ function TrialRow({ depth, trial, onClick }: { depth: number; trial: TrialDTO; o
   return (
     <button
       onClick={onClick}
-      className="group flex w-full items-start gap-2 rounded-lg py-1.5 pr-3 text-left hover:bg-slate-800/50"
+      className="group flex w-full items-start gap-2 rounded-lg py-1.5 pr-3 text-left hover:bg-slate-100"
       style={{ paddingLeft: 10 + depth * 20 }}
     >
-      <span className="mt-1 w-3 shrink-0 text-slate-600">•</span>
+      <span className="mt-1 w-3 shrink-0 text-slate-300">•</span>
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-2">
-          <span className="text-[0.58rem] font-bold uppercase text-blue-300">{trial.phase ?? 'Trial'}</span>
-          {trial.nctId && <span className="text-[0.58rem] text-slate-500">{trial.nctId}</span>}
+          <span className="text-[0.58rem] font-bold uppercase text-blue-600">{trial.phase ?? 'Trial'}</span>
+          {trial.nctId && <span className="text-[0.58rem] text-slate-400">{trial.nctId}</span>}
         </span>
-        <span className="block text-sm leading-snug text-slate-200">{trial.title}</span>
-        <span className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[0.65rem] text-slate-400">
+        <span className="block text-sm leading-snug text-slate-700">{trial.title}</span>
+        <span className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[0.65rem] text-slate-500">
           {trial.locations.map((l) => (
             <span key={l.locationSlug} className="inline-flex items-center gap-1">
-              <span className={`h-1.5 w-1.5 rounded-full ${DOT[l.status] ?? 'bg-slate-500'}`} />
+              <span className={`h-1.5 w-1.5 rounded-full ${DOT[l.status] ?? 'bg-slate-400'}`} />
               {centerBySlug(l.locationSlug)?.shortName ?? l.locationName}
             </span>
           ))}
         </span>
       </span>
-      <span className="mt-1 shrink-0 text-slate-600 group-hover:text-slate-300">→</span>
+      <span className="mt-1 shrink-0 text-slate-300 group-hover:text-slate-600">→</span>
     </button>
   );
 }

@@ -5,56 +5,73 @@
 @import '@xyflow/react/dist/style.css';
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 html,
 body {
   margin: 0;
   padding: 0;
-  color: #e8edf4;
+  color: #1e293b; /* slate-800 */
   height: 100%;
-  background-color: #0a0e14;
-  background-image: radial-gradient(1100px 560px at 15% -10%, rgba(59, 130, 246, 0.08), transparent 60%);
+  background-color: #f6f7f9; /* soft off-white */
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
-/* React Flow theming for dark, high-contrast kiosk + admin */
+/* React Flow theming — light, professional */
+.react-flow {
+  background-color: #f6f7f9;
+}
 .react-flow__edge-path {
-  stroke: #46556b;
-  stroke-width: 2;
+  stroke: #cbd5e1; /* slate-300 */
+  stroke-width: 1.75;
 }
 .react-flow__attribution {
   display: none;
 }
+.react-flow__controls-button {
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  color: #475569;
+}
+.react-flow__minimap {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
 
-/* Status pills shared by trial nodes */
+/* Status pills shared by trial nodes and lists */
 .pill {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
   border-radius: 9999px;
   padding: 0.1rem 0.55rem;
-  font-weight: 700;
+  font-weight: 600;
   font-size: 0.72rem;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
+  border: 1px solid transparent;
 }
 .pill-RECRUITING {
-  background: rgba(34, 197, 94, 0.18);
-  color: #4ade80;
+  background: #ecfdf5; /* emerald-50 */
+  color: #047857; /* emerald-700 */
+  border-color: #a7f3d0; /* emerald-200 */
 }
 .pill-WAITLISTED {
-  background: rgba(234, 179, 8, 0.18);
-  color: #fde047;
+  background: #fffbeb; /* amber-50 */
+  color: #b45309; /* amber-700 */
+  border-color: #fde68a; /* amber-200 */
 }
 .pill-CLOSED {
-  background: rgba(107, 114, 128, 0.22);
-  color: #cbd5e1;
+  background: #f1f5f9; /* slate-100 */
+  color: #64748b; /* slate-500 */
+  border-color: #e2e8f0; /* slate-200 */
 }
 .pill-SUSPENDED {
-  background: rgba(239, 68, 68, 0.18);
-  color: #fca5a5;
+  background: #fff1f2; /* rose-50 */
+  color: #be123c; /* rose-700 */
+  border-color: #fecdd3; /* rose-200 */
 }
 
 /* Kiosk: bump base sizes for 5–10ft legibility */
@@ -62,12 +79,11 @@ body {
   font-size: 18px;
 }
 .kiosk .react-flow__edge-path {
-  stroke-width: 3;
+  stroke-width: 2.5;
 }
 
-/* E-Ink mode: max contrast, no gradients/animation. Toggle with ?display=eink */
-.eink,
-.eink body {
+/* E-Ink mode: max contrast, no animation. Toggle with ?display=eink */
+.eink {
   background: #ffffff !important;
   color: #000000 !important;
 }
@@ -75,7 +91,7 @@ body {
   stroke: #000 !important;
 }
 .eink .pill {
-  border: 2px solid #000;
+  border: 1.5px solid #000;
   background: #fff !important;
   color: #000 !important;
 }

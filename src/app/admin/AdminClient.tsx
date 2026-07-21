@@ -83,7 +83,7 @@ export function AdminClient() {
   };
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden">
+    <div className="flex h-screen w-screen overflow-hidden bg-[#f6f7f9] text-slate-800">
       <Sidebar
         pis={data?.principalInvestigators ?? []}
         diseases={diseases}
@@ -97,7 +97,7 @@ export function AdminClient() {
       />
       <main className="relative flex-1">
         {loading || !data ? (
-          <div className="flex h-full items-center justify-center text-xl text-slate-500">
+          <div className="flex h-full items-center justify-center text-xl text-slate-400">
             Loading trials…
           </div>
         ) : view === 'outline' ? (
@@ -117,15 +117,15 @@ export function AdminClient() {
 
         {/* Entry prompt: pick a cancer type to explore. */}
         {!loading && data && !entered && (
-          <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-950 p-6 text-center">
-            <div className="text-3xl font-extrabold tracking-tight text-slate-50">Welcome to TrialTree</div>
-            <p className="mt-2 text-slate-400">Which cancer would you like to explore?</p>
+          <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white p-6 text-center">
+            <div className="text-3xl font-extrabold tracking-tight text-slate-900">Welcome to TrialTree</div>
+            <p className="mt-2 text-slate-500">Which cancer would you like to explore?</p>
             <div className="mt-7 flex flex-wrap justify-center gap-4">
               {diseases.map((d) => (
                 <button
                   key={d}
                   onClick={() => chooseCancer(d)}
-                  className="min-w-[180px] rounded-2xl border border-blue-500/40 bg-blue-500/10 px-8 py-6 text-lg font-bold text-slate-100 transition hover:border-blue-400 hover:bg-blue-500/20"
+                  className="min-w-[180px] rounded-2xl border border-slate-200 bg-white px-8 py-6 text-lg font-bold text-slate-800 shadow-sm transition hover:border-blue-300 hover:bg-blue-50"
                 >
                   {d}
                 </button>
@@ -133,7 +133,7 @@ export function AdminClient() {
             </div>
             <button
               onClick={() => chooseCancer(null)}
-              className="mt-6 text-sm font-semibold text-slate-400 hover:text-slate-200"
+              className="mt-6 text-sm font-semibold text-slate-500 hover:text-slate-800"
             >
               Or view all GU cancers →
             </button>
@@ -143,38 +143,38 @@ export function AdminClient() {
         {/* Top bar */}
         <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-center justify-between gap-3 p-4">
           <div className="pointer-events-auto flex items-center gap-2">
-            <div className="flex overflow-hidden rounded-lg border border-slate-700 bg-slate-900/90 text-xs font-semibold shadow-lg">
+            <div className="flex overflow-hidden rounded-lg border border-slate-200 bg-white text-xs font-semibold shadow-sm">
               <button
                 onClick={() => setView('map')}
-                className={`px-3 py-1.5 ${view === 'map' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'}`}
+                className={`px-3 py-1.5 ${view === 'map' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:text-slate-800'}`}
               >
                 ⊹ Map
               </button>
               <button
                 onClick={() => setView('outline')}
-                className={`px-3 py-1.5 ${view === 'outline' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'}`}
+                className={`px-3 py-1.5 ${view === 'outline' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:text-slate-800'}`}
               >
                 ☰ Outline
               </button>
             </div>
 
             {view === 'map' && (
-              <div className="pointer-events-auto flex flex-wrap items-center gap-1 rounded-lg border border-slate-700 bg-slate-900/90 px-2.5 py-1.5 text-xs shadow-lg">
+              <div className="pointer-events-auto flex flex-wrap items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs shadow-sm">
                 {crumbs.map((c, i) => (
                   <span key={`${c.id ?? 'root'}-${i}`} className="flex items-center gap-1">
-                    {i > 0 && <span className="text-slate-600">›</span>}
+                    {i > 0 && <span className="text-slate-300">›</span>}
                     {i < crumbs.length - 1 ? (
                       <button
                         onClick={() => {
                           if (c.id === null) setFilter((f) => ({ ...f, diseaseLabel: null }));
                           setFocusId(c.id);
                         }}
-                        className="font-semibold text-slate-400 hover:text-white"
+                        className="font-semibold text-slate-500 hover:text-slate-900"
                       >
                         {c.label}
                       </button>
                     ) : (
-                      <span className="font-semibold text-slate-100">{c.label}</span>
+                      <span className="font-semibold text-slate-900">{c.label}</span>
                     )}
                   </span>
                 ))}
@@ -183,16 +183,16 @@ export function AdminClient() {
           </div>
 
           {stats && (
-            <div className="pointer-events-auto flex items-center gap-3 rounded-lg border border-slate-700 bg-slate-900/80 px-4 py-1.5 text-xs shadow-lg">
-              <span className="font-bold text-slate-100">{stats.total}</span>
-              <span className="text-slate-400">trials</span>
+            <div className="pointer-events-auto flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-1.5 text-xs shadow-sm">
+              <span className="font-bold text-slate-900">{stats.total}</span>
+              <span className="text-slate-500">trials</span>
               <span className="inline-flex items-center gap-1">
-                <span className="inline-block h-2 w-2 rounded-full bg-green-400" />
-                <span className="font-bold text-green-300">{stats.recruiting}</span>
-                <span className="text-slate-400">recruiting</span>
+                <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
+                <span className="font-bold text-emerald-600">{stats.recruiting}</span>
+                <span className="text-slate-500">recruiting</span>
               </span>
-              <span className="text-slate-500">·</span>
-              <span className="text-slate-400">{stats.centers} centers</span>
+              <span className="text-slate-300">·</span>
+              <span className="text-slate-500">{stats.centers} centers</span>
             </div>
           )}
         </div>

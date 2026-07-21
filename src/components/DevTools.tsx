@@ -85,7 +85,7 @@ export function DevTools() {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="fixed right-4 top-4 z-50 rounded-full border border-slate-600 bg-slate-900/90 px-3 py-1.5 text-xs font-semibold text-slate-300 shadow-lg hover:bg-slate-800"
+        className="fixed right-4 top-4 z-50 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-md hover:bg-slate-50"
         title="Dev simulator (local only)"
       >
         🛠 Dev
@@ -94,10 +94,10 @@ export function DevTools() {
   }
 
   return (
-    <div className="fixed right-4 top-4 z-50 w-80 rounded-xl border border-slate-600 bg-slate-950/95 p-4 text-sm shadow-2xl">
+    <div className="fixed right-4 top-4 z-50 w-80 rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-800 shadow-xl">
       <div className="flex items-center justify-between">
-        <span className="font-bold text-slate-200">🛠 Real-time simulator</span>
-        <button onClick={() => setOpen(false)} className="text-slate-400 hover:text-slate-200">
+        <span className="font-bold text-slate-900">🛠 Real-time simulator</span>
+        <button onClick={() => setOpen(false)} className="text-slate-400 hover:text-slate-700">
           ✕
         </button>
       </div>
@@ -110,14 +110,14 @@ export function DevTools() {
         <button
           disabled={busy}
           onClick={() => runEndpoint('/api/dev/import', 'Import')}
-          className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
+          className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
         >
           Import CT.gov trials
         </button>
         <button
           disabled={busy}
           onClick={() => runEndpoint('/api/dev/seed', 'Seed')}
-          className="rounded-lg border border-slate-600 px-3 py-1.5 text-xs font-semibold hover:bg-slate-800 disabled:opacity-50"
+          className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50"
         >
           Load demo seed
         </button>
@@ -137,14 +137,14 @@ export function DevTools() {
               setMode(p.mode);
               fire(p);
             }}
-            className="block w-full rounded-lg bg-blue-600 px-3 py-1.5 text-left text-xs font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
+            className="block w-full rounded-lg bg-blue-600 px-3 py-1.5 text-left text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
           >
             {p.label}
           </button>
         ))}
       </div>
 
-      <div className="mt-3 border-t border-slate-800 pt-3">
+      <div className="mt-3 border-t border-slate-200 pt-3">
         <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
           Custom message
         </label>
@@ -152,13 +152,13 @@ export function DevTools() {
           value={text}
           onChange={(e) => setText(e.target.value)}
           rows={2}
-          className="mt-1 w-full resize-none rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-xs"
+          className="mt-1 w-full resize-none rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800"
         />
         <div className="mt-2 flex gap-2">
           <select
             value={location}
             onChange={(e) => setLocation(e.target.value)}
-            className="flex-1 rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-xs"
+            className="flex-1 rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800"
           >
             {CENTERS.map((c) => (
               <option key={c.slug} value={c.slug}>
@@ -169,7 +169,7 @@ export function DevTools() {
           <select
             value={mode}
             onChange={(e) => setMode(e.target.value as Mode)}
-            className="rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-xs"
+            className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800"
             title="full = run the AI parser + DB write; flash = just fire the SSE event"
           >
             <option value="full">full pipeline</option>
@@ -179,14 +179,14 @@ export function DevTools() {
         <button
           disabled={busy}
           onClick={() => fire()}
-          className="mt-2 w-full rounded-lg bg-green-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-500 disabled:opacity-50"
+          className="mt-2 w-full rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
         >
           {busy ? 'Firing…' : 'Simulate →'}
         </button>
       </div>
 
       {result && (
-        <div className="mt-3 rounded-lg border border-slate-800 bg-slate-900/60 p-2 text-xs text-slate-300">
+        <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-2 text-xs text-slate-600">
           {result}
         </div>
       )}
