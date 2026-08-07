@@ -229,23 +229,31 @@ export function AdminClient() {
         {/* Top bar */}
         <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-center justify-between gap-3 p-4">
           <div className="pointer-events-auto flex items-center gap-2">
-            <div className="flex overflow-hidden rounded-lg border border-slate-200 bg-white text-xs font-semibold shadow-sm">
+            <div className="flex gap-0.5 rounded-xl border border-slate-200 bg-white/80 p-0.5 text-xs font-semibold shadow-sm backdrop-blur">
               <button
                 onClick={() => setView('map')}
-                className={`px-3 py-1.5 ${view === 'map' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:text-slate-800'}`}
+                className={`rounded-lg px-3 py-1.5 transition-all duration-200 active:scale-95 ${
+                  view === 'map'
+                    ? 'bg-slate-900 text-white shadow-sm'
+                    : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'
+                }`}
               >
                 ⊹ Map
               </button>
               <button
                 onClick={() => setView('outline')}
-                className={`px-3 py-1.5 ${view === 'outline' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:text-slate-800'}`}
+                className={`rounded-lg px-3 py-1.5 transition-all duration-200 active:scale-95 ${
+                  view === 'outline'
+                    ? 'bg-slate-900 text-white shadow-sm'
+                    : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'
+                }`}
               >
                 ☰ Outline
               </button>
             </div>
 
             {view === 'map' && (
-              <div className="pointer-events-auto flex flex-wrap items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs shadow-sm">
+              <div className="pointer-events-auto flex flex-wrap items-center gap-1 rounded-xl border border-slate-200 bg-white/80 px-2.5 py-1.5 text-xs shadow-sm backdrop-blur">
                 {crumbs.map((c, i) => (
                   <span key={`${c.id ?? 'root'}-${i}`} className="flex items-center gap-1">
                     {i > 0 && <span className="text-slate-300">›</span>}
@@ -255,12 +263,12 @@ export function AdminClient() {
                           if (c.id === null) setFilter((f) => ({ ...f, diseaseLabel: null }));
                           setFocusId(c.id);
                         }}
-                        className="font-semibold text-slate-500 hover:text-slate-900"
+                        className="rounded-md px-1.5 py-0.5 font-semibold text-slate-500 transition-colors hover:bg-blue-50 hover:text-blue-700"
                       >
                         {c.label}
                       </button>
                     ) : (
-                      <span className="font-semibold text-slate-900">{c.label}</span>
+                      <span className="px-1.5 font-semibold text-slate-900">{c.label}</span>
                     )}
                   </span>
                 ))}
@@ -269,19 +277,50 @@ export function AdminClient() {
           </div>
 
           {stats && (
-            <div className="pointer-events-auto flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-1.5 text-xs shadow-sm">
-              <span className="font-bold text-slate-900">{stats.total}</span>
-              <span className="text-slate-500">trials</span>
+            <div className="pointer-events-auto flex items-center gap-3 rounded-xl border border-slate-200 bg-white/80 px-4 py-1.5 text-xs shadow-sm backdrop-blur">
+              <span className="inline-flex items-center gap-1.5">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" className="text-blue-600" aria-hidden>
+                  <path d="M12 4v4M12 8l-6 5M12 8l6 5M6 13v3M18 13v3" />
+                </svg>
+                <span className="font-bold text-slate-900">{stats.total}</span>
+                <span className="text-slate-500">trials</span>
+              </span>
+              <span className="text-slate-200">·</span>
               <span className="inline-flex items-center gap-1">
-                <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
+                <span className="inline-block h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.15)]" />
                 <span className="font-bold text-emerald-600">{stats.recruiting}</span>
                 <span className="text-slate-500">recruiting</span>
               </span>
-              <span className="text-slate-300">·</span>
+              <span className="text-slate-200">·</span>
               <span className="text-slate-500">{stats.centers} centers</span>
             </div>
           )}
         </div>
+
+        {/* Color legend — sits where the minimap was; explains the node colors. */}
+        {view === 'map' && entered && data && !selected && (
+          <div className="pointer-events-none absolute bottom-4 right-4 z-10 hidden animate-fade-up sm:block">
+            <div className="rounded-xl border border-slate-200 bg-white/80 p-3 text-[0.7rem] shadow-card backdrop-blur">
+              <div className="mb-2 font-semibold uppercase tracking-wider text-slate-400">Legend</div>
+              <div className="grid grid-cols-2 gap-x-5 gap-y-1.5">
+                <LegendDot color="bg-blue-500" label="Cancer type" />
+                <LegendDot color="bg-violet-500" label="Disease state" />
+                <LegendDot color="bg-emerald-500" label="Biomarker" />
+                <LegendDot color="bg-amber-500" label="Approach" />
+              </div>
+              <div className="mt-2.5 flex items-center gap-4 border-t border-slate-100 pt-2 text-slate-500">
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  Recruiting
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
+                  Closed
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
 
         {selected && <TrialDetail trial={selected} onClose={() => setSelected(null)} />}
 
@@ -289,5 +328,14 @@ export function AdminClient() {
         <DevTools />
       </main>
     </div>
+  );
+}
+
+function LegendDot({ color, label }: { color: string; label: string }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 text-slate-600">
+      <span className={`h-2.5 w-2.5 rounded-[4px] ${color}`} />
+      {label}
+    </span>
   );
 }

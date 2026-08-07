@@ -37,7 +37,7 @@ function TreeMark() {
 
 export function Sidebar({ pis, diseases, filter, connected, lastSummary, onChange }: Props) {
   const selectCls =
-    'mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-200';
+    'mt-1.5 w-full cursor-pointer rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 transition-colors hover:border-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-200';
 
   return (
     <aside className="flex w-80 shrink-0 flex-col gap-5 overflow-y-auto border-r border-slate-200 bg-white p-5">
@@ -146,7 +146,7 @@ export function Sidebar({ pis, diseases, filter, connected, lastSummary, onChang
 
         {(filter.locationSlug || filter.pi || filter.search || filter.diseaseLabel) && (
           <button
-            className="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100"
+            className="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 transition-all duration-150 hover:border-slate-400 hover:bg-slate-100 active:scale-[0.98]"
             onClick={() => onChange({ locationSlug: null, pi: null, search: null, diseaseLabel: null })}
           >
             Reset filters
@@ -161,9 +161,10 @@ export function Sidebar({ pis, diseases, filter, connected, lastSummary, onChang
 
       <a
         href="/admin/review"
-        className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-center text-sm font-semibold text-slate-700 hover:bg-slate-100"
+        className="group flex items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-center text-sm font-semibold text-slate-700 transition-all duration-150 hover:-translate-y-0.5 hover:border-slate-400 hover:bg-slate-50 hover:shadow-sm"
       >
-        Review queue →
+        Review queue
+        <span className="transition-transform duration-200 group-hover:translate-x-0.5">→</span>
       </a>
     </aside>
   );

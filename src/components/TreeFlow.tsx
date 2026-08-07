@@ -70,7 +70,7 @@ export function TreeFlow({
         zoomOnDoubleClick={!kiosk}
         preventScrolling={!kiosk}
       >
-        <Background gap={kiosk ? 28 : 18} color="#e2e8f0" />
+        <Background gap={kiosk ? 30 : 22} size={1.4} color="#d4dce7" />
         {!kiosk && <Controls showInteractive={false} />}
         {/* Re-frame the whole tree whenever its structure changes — a live
             update on a kiosk, or a toggle/filter change on admin — so it never

@@ -182,6 +182,7 @@ body {
 
 /* React Flow nodes get a subtle hover lift for interactivity */
 .react-flow__node {
+  cursor: pointer;
   transition: transform 0.16s ease, filter 0.16s ease;
 }
 .react-flow__node:hover {
@@ -190,26 +191,42 @@ body {
   z-index: 10;
 }
 
-/* React Flow theming — light, professional */
+/* React Flow theming — light, professional, soft mesh-gradient canvas */
 .react-flow {
-  background-color: #f6f7f9;
+  background-color: #f7f8fb;
+  background-image:
+    radial-gradient(46rem 46rem at 12% -5%, rgba(59, 130, 246, 0.07), transparent 60%),
+    radial-gradient(42rem 42rem at 100% 108%, rgba(16, 185, 129, 0.06), transparent 60%),
+    radial-gradient(34rem 34rem at 88% 4%, rgba(139, 92, 246, 0.055), transparent 62%);
 }
 .react-flow__edge-path {
-  stroke: #cbd5e1; /* slate-300 */
+  stroke: #c2cede; /* soft slate-blue */
   stroke-width: 1.75;
 }
 .react-flow__attribution {
   display: none;
 }
+/* Canvas zoom / fit controls — rounded card with on-brand hover */
+.react-flow__controls {
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #e6ebf2;
+  box-shadow: 0 6px 20px -8px rgba(15, 23, 42, 0.18);
+}
 .react-flow__controls-button {
   background: #ffffff;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid #eef2f7;
   color: #475569;
+  width: 30px;
+  height: 30px;
+  transition: background 0.15s ease, color 0.15s ease;
 }
-.react-flow__minimap {
-  background: #ffffff !important;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
+.react-flow__controls-button:hover {
+  background: #eff6ff;
+  color: #2563eb;
+}
+.react-flow__controls-button svg {
+  fill: currentColor;
 }
 
 /* Status pills shared by trial nodes and lists */
