@@ -8,6 +8,7 @@ import { OutlineBrowser } from '@/components/OutlineBrowser';
 import { Sidebar } from '@/components/Sidebar';
 import { DevTools } from '@/components/DevTools';
 import { TrialDetail } from '@/components/TrialDetail';
+import { DecisionTreeBackdrop } from '@/components/DecisionTreeBackdrop';
 import { useTreeStream } from '@/components/useTreeStream';
 import type { TreeFilter, TrialDTO } from '@/types';
 
@@ -171,6 +172,7 @@ export function AdminClient() {
             <div className="aurora">
               <div className="aurora-3" />
             </div>
+            <DecisionTreeBackdrop className="pointer-events-none absolute inset-0 z-0 h-full w-full opacity-[0.55]" />
             <div className="relative z-10 animate-fade-up">
               <div className="text-[0.7rem] font-semibold uppercase tracking-[0.28em] text-blue-600">
                 GU Oncology Trial Map

@@ -106,6 +106,65 @@ body {
   color: transparent;
 }
 
+/* Animated decision-tree backdrop (welcome screen).
+   Branch lines draw themselves in, nodes gently breathe, and glowing
+   pulses travel down the branches — on-brand and calm. */
+.dt-line {
+  stroke-dasharray: 640;
+  stroke-dashoffset: 640;
+  animation: dt-draw 1.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@keyframes dt-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.dt-node {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: dt-breathe 5s ease-in-out infinite;
+}
+@keyframes dt-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.55;
+  }
+  50% {
+    transform: scale(1.32);
+    opacity: 1;
+  }
+}
+.dt-pulse {
+  animation: dt-travel 3.4s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+@keyframes dt-travel {
+  0% {
+    offset-distance: 0%;
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  88% {
+    opacity: 1;
+  }
+  100% {
+    offset-distance: 100%;
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dt-line {
+    stroke-dashoffset: 0;
+    animation: none;
+  }
+  .dt-node,
+  .dt-pulse {
+    animation: none;
+  }
+}
+
 /* Slide-over entrance (trial detail panel) */
 @keyframes slide-in-right {
   from {

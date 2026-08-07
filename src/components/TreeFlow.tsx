@@ -18,6 +18,23 @@ import type { TreeData, TreeFilter } from '@/types';
 
 const nodeTypes: NodeTypes = { decision: DecisionNode, trial: TrialNode };
 
+// Colour the minimap blips so the overview map actually reads (light nodes on a
+// white minimap were invisible). Decision nodes by kind, trials by recruiting.
+const KIND_MINI: Record<string, string> = {
+  DISEASE_TYPE: '#3b82f6',
+  DISEASE_STATE: '#8b5cf6',
+  BIOMARKER: '#10b981',
+  LINE_OF_THERAPY: '#f59e0b',
+};
+function miniMapNodeColor(node: Node): string {
+  if (node.type === 'trial') {
+    const statuses = (node.data as { statuses?: { status: string }[] }).statuses ?? [];
+    return statuses.some((s) => s.status === 'RECRUITING') ? '#10b981' : '#94a3b8';
+  }
+  const kind = (node.data as { kind?: string }).kind;
+  return (kind && KIND_MINI[kind]) || '#93c5fd';
+}
+
 type Props = {
   data: TreeData;
   filter?: TreeFilter;
@@ -73,7 +90,19 @@ export function TreeFlow({
       >
         <Background gap={kiosk ? 28 : 18} color="#e2e8f0" />
         {!kiosk && <Controls showInteractive={false} />}
-        {!kiosk && <MiniMap pannable zoomable className="!bg-white" maskColor="rgba(148,163,184,0.15)" />}
+        {!kiosk && (
+          <MiniMap
+            pannable
+            zoomable
+            className="!bg-white"
+            bgColor="#f8fafc"
+            maskColor="rgba(148,163,184,0.12)"
+            nodeColor={miniMapNodeColor}
+            nodeStrokeColor="#ffffff"
+            nodeStrokeWidth={2}
+            nodeBorderRadius={6}
+          />
+        )}
         {/* Re-frame the whole tree whenever its structure changes — a live
             update on a kiosk, or a toggle/filter change on admin — so it never
             drifts off-screen. Keyed on node count so it doesn't fight the user's
