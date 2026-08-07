@@ -15,8 +15,120 @@ body {
   color: #1e293b; /* slate-800 */
   height: 100%;
   background-color: #f6f7f9; /* soft off-white */
+  font-family: var(--font-inter), ui-sans-serif, system-ui, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: rgba(37, 99, 235, 0.16);
+}
+
+/* Consistent, on-brand keyboard focus ring */
+:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Soft animated aurora backdrop used behind heros / welcome screens.
+   Very light-touch — three blurred color blobs drifting slowly.
+   Keyframe defined here (not just in Tailwind config) since the aurora
+   references it from raw CSS rather than an animate-* utility class. */
+@keyframes float {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(3%, -4%) scale(1.06);
+  }
+  66% {
+    transform: translate(-3%, 3%) scale(0.96);
+  }
+}
+.aurora {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+.aurora::before,
+.aurora::after {
+  content: '';
+  position: absolute;
+  width: 46rem;
+  height: 46rem;
+  border-radius: 9999px;
+  filter: blur(80px);
+  opacity: 0.5;
+  will-change: transform;
+}
+.aurora::before {
+  top: -18rem;
+  left: -12rem;
+  background: radial-gradient(circle at center, rgba(59, 130, 246, 0.42), transparent 62%);
+  animation: float 20s ease-in-out infinite;
+}
+.aurora::after {
+  bottom: -20rem;
+  right: -14rem;
+  background: radial-gradient(circle at center, rgba(16, 185, 129, 0.34), transparent 62%);
+  animation: float 24s ease-in-out infinite reverse;
+}
+.aurora-3 {
+  position: absolute;
+  top: 20%;
+  right: 12%;
+  width: 34rem;
+  height: 34rem;
+  border-radius: 9999px;
+  filter: blur(80px);
+  opacity: 0.4;
+  background: radial-gradient(circle at center, rgba(139, 92, 246, 0.32), transparent 62%);
+  animation: float 28s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora::before,
+  .aurora::after,
+  .aurora-3 {
+    animation: none;
+  }
+}
+
+/* Gradient text used for hero headings */
+.text-gradient {
+  background: linear-gradient(100deg, #1e293b 0%, #2563eb 55%, #0ea5e9 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Slide-over entrance (trial detail panel) */
+@keyframes slide-in-right {
+  from {
+    transform: translateX(18px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+.animate-slide-in-right {
+  animation: slide-in-right 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* React Flow nodes get a subtle hover lift for interactivity */
+.react-flow__node {
+  transition: transform 0.16s ease, filter 0.16s ease;
+}
+.react-flow__node:hover {
+  transform: translateY(-2px);
+  filter: drop-shadow(0 10px 18px rgba(37, 99, 235, 0.16));
+  z-index: 10;
 }
 
 /* React Flow theming — light, professional */

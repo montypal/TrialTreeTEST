@@ -57,8 +57,8 @@ export function FindClient() {
   return (
     <main className="relative mx-auto max-w-3xl px-6 py-10 text-slate-800">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">Find a trial</h1>
-        <Link href="/admin" className="text-sm text-blue-600 hover:underline">
+        <h1 className="font-display text-3xl font-extrabold tracking-tight text-gradient">Find a trial</h1>
+        <Link href="/admin" className="text-sm font-semibold text-blue-600 hover:underline">
           Full tree →
         </Link>
       </div>
@@ -89,7 +89,7 @@ export function FindClient() {
         <button
           onClick={search}
           disabled={loading || !query.trim()}
-          className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+          className="rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lift disabled:translate-y-0 disabled:opacity-50 disabled:shadow-none"
         >
           {loading ? 'Searching the catalog…' : 'Find matching trials'}
         </button>
@@ -137,7 +137,7 @@ export function FindClient() {
             {result.matches.map((m) => {
               const recruiting = m.trial.locations.filter((l) => l.status === 'RECRUITING');
               return (
-                <article key={m.trial.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <article key={m.trial.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-lift">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className={`rounded-full border px-2 py-0.5 text-[0.7rem] font-bold uppercase ${FIT_STYLE[m.fit]}`}>
                       {m.fit} match
@@ -146,7 +146,7 @@ export function FindClient() {
                     {m.trial.nctId && <span className="text-xs text-slate-400">· {m.trial.nctId}</span>}
                   </div>
 
-                  <h3 className="mt-1.5 font-bold leading-snug text-slate-900">{m.trial.title}</h3>
+                  <h3 className="mt-1.5 font-display font-bold leading-snug text-slate-900">{m.trial.title}</h3>
                   <div className="text-xs text-slate-400">{m.path}</div>
 
                   <p className="mt-2 text-sm text-slate-700">

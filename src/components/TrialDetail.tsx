@@ -10,14 +10,14 @@ export function TrialDetail({ trial, onClose }: { trial: TrialDTO; onClose: () =
   const nctUrl = trial.nctId ? `https://clinicaltrials.gov/study/${trial.nctId}` : null;
 
   return (
-    <div className="fixed inset-y-0 right-0 z-40 flex w-[440px] max-w-[92vw] flex-col border-l border-slate-200 bg-white shadow-2xl">
+    <div className="animate-slide-in-right fixed inset-y-0 right-0 z-40 flex w-[440px] max-w-[92vw] flex-col border-l border-slate-200 bg-white shadow-2xl">
       <div className="flex items-start justify-between gap-3 border-b border-slate-200 p-5">
         <div>
           <div className="text-[0.65rem] font-bold uppercase tracking-widest text-blue-600">
             {trial.phase ?? 'Trial'}
             {trial.nctId ? ` · ${trial.nctId}` : ''}
           </div>
-          <h2 className="mt-1 text-lg font-bold leading-snug text-slate-900">{trial.title}</h2>
+          <h2 className="mt-1 font-display text-lg font-bold leading-snug text-slate-900">{trial.title}</h2>
           {trial.principalInvestigator && (
             <div className="mt-1 text-sm text-slate-500">Lead PI: {trial.principalInvestigator}</div>
           )}

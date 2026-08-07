@@ -11,6 +11,34 @@ import { TrialDetail } from '@/components/TrialDetail';
 import { useTreeStream } from '@/components/useTreeStream';
 import type { TreeFilter, TrialDTO } from '@/types';
 
+// Signature look per cancer for the welcome picker — falls back to slate.
+const CANCER_STYLE: Record<string, { grad: string; hover: string; badge: string; bar: string }> = {
+  'Prostate Cancer': {
+    grad: 'from-blue-50 to-white',
+    hover: 'hover:border-blue-300',
+    badge: 'bg-blue-100 text-blue-700',
+    bar: 'bg-blue-500',
+  },
+  'Bladder Cancer': {
+    grad: 'from-amber-50 to-white',
+    hover: 'hover:border-amber-300',
+    badge: 'bg-amber-100 text-amber-700',
+    bar: 'bg-amber-500',
+  },
+  'Renal Cell Carcinoma': {
+    grad: 'from-emerald-50 to-white',
+    hover: 'hover:border-emerald-300',
+    badge: 'bg-emerald-100 text-emerald-700',
+    bar: 'bg-emerald-500',
+  },
+};
+const CANCER_FALLBACK = {
+  grad: 'from-slate-50 to-white',
+  hover: 'hover:border-slate-300',
+  badge: 'bg-slate-100 text-slate-700',
+  bar: 'bg-slate-400',
+};
+
 export function AdminClient() {
   const [filter, setFilter] = useState<TreeFilter>({ locationSlug: null, pi: null });
   const [view, setView] = useState<'outline' | 'map'>('map');
@@ -31,6 +59,28 @@ export function AdminClient() {
     const recruiting = data.trials.filter((t) => t.locations.some((l) => l.status === 'RECRUITING')).length;
     const centers = new Set(data.trials.flatMap((t) => t.locations.map((l) => l.locationSlug))).size;
     return { total, recruiting, centers };
+  }, [data]);
+
+  // Per-cancer trial + recruiting counts, shown on the welcome cards.
+  const diseaseStats = useMemo(() => {
+    const m = new Map<string, { total: number; rec: number }>();
+    if (!data) return m;
+    const nodeById = new Map(data.decisionNodes.map((n) => [n.id, n] as const));
+    const rootLabel = (nodeId: string): string | null => {
+      let cur = nodeById.get(nodeId);
+      let g = 0;
+      while (cur && cur.parentId && g++ < 12) cur = nodeById.get(cur.parentId);
+      return cur?.label ?? null;
+    };
+    for (const t of data.trials) {
+      const label = rootLabel(t.decisionNodeId);
+      if (!label) continue;
+      const cur = m.get(label) ?? { total: 0, rec: 0 };
+      cur.total += 1;
+      if (t.locations.some((l) => l.status === 'RECRUITING')) cur.rec += 1;
+      m.set(label, cur);
+    }
+    return m;
   }, [data]);
 
   // Breadcrumb for the stepped map — reflects the selected cancer + drill path.
@@ -117,26 +167,60 @@ export function AdminClient() {
 
         {/* Entry prompt: pick a cancer type to explore. */}
         {!loading && data && !entered && (
-          <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white p-6 text-center">
-            <div className="text-3xl font-extrabold tracking-tight text-slate-900">Welcome to TrialTree</div>
-            <p className="mt-2 text-slate-500">Which cancer would you like to explore?</p>
-            <div className="mt-7 flex flex-wrap justify-center gap-4">
-              {diseases.map((d) => (
-                <button
-                  key={d}
-                  onClick={() => chooseCancer(d)}
-                  className="min-w-[180px] rounded-2xl border border-slate-200 bg-white px-8 py-6 text-lg font-bold text-slate-800 shadow-sm transition hover:border-blue-300 hover:bg-blue-50"
-                >
-                  {d}
-                </button>
-              ))}
+          <div className="fixed inset-0 z-50 flex flex-col items-center justify-center overflow-hidden bg-[#f6f7f9] p-6 text-center">
+            <div className="aurora">
+              <div className="aurora-3" />
             </div>
-            <button
-              onClick={() => chooseCancer(null)}
-              className="mt-6 text-sm font-semibold text-slate-500 hover:text-slate-800"
-            >
-              Or view all GU cancers →
-            </button>
+            <div className="relative z-10 animate-fade-up">
+              <div className="text-[0.7rem] font-semibold uppercase tracking-[0.28em] text-blue-600">
+                GU Oncology Trial Map
+              </div>
+              <div className="mt-2 font-display text-4xl font-extrabold tracking-tight text-gradient sm:text-5xl">
+                Welcome to TrialTree
+              </div>
+              <p className="mt-3 text-slate-500">Which cancer would you like to explore?</p>
+
+              <div className="mt-8 flex flex-wrap justify-center gap-4">
+                {diseases.map((d) => {
+                  const s = CANCER_STYLE[d] ?? CANCER_FALLBACK;
+                  const st = diseaseStats.get(d);
+                  return (
+                    <button
+                      key={d}
+                      onClick={() => chooseCancer(d)}
+                      className={`group relative w-60 overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br ${s.grad} p-6 text-left shadow-card transition-all duration-300 hover:-translate-y-1.5 ${s.hover} hover:shadow-lift`}
+                    >
+                      <span className={`absolute inset-x-0 top-0 h-1 ${s.bar}`} />
+                      <span className={`inline-flex h-11 w-11 items-center justify-center rounded-xl font-display text-xl font-extrabold ${s.badge}`}>
+                        {d[0]}
+                      </span>
+                      <div className="mt-3 font-display text-lg font-bold leading-tight text-slate-900">{d}</div>
+                      <div className="mt-1 text-sm text-slate-500">
+                        {st ? (
+                          <>
+                            <span className="font-semibold text-slate-700">{st.total}</span> trials
+                            {st.rec > 0 && <span className="text-emerald-600"> · {st.rec} recruiting</span>}
+                          </>
+                        ) : (
+                          'View trials'
+                        )}
+                      </div>
+                      <div className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-slate-700">
+                        Explore
+                        <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={() => chooseCancer(null)}
+                className="mt-7 text-sm font-semibold text-slate-500 transition hover:text-slate-900"
+              >
+                Or view all GU cancers →
+              </button>
+            </div>
           </div>
         )}
 

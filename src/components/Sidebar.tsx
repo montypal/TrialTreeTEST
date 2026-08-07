@@ -45,7 +45,7 @@ export function Sidebar({ pis, diseases, filter, connected, lastSummary, onChang
       <div className="flex items-center gap-2.5">
         <TreeMark />
         <div className="leading-tight">
-          <div className="text-lg font-extrabold tracking-tight text-slate-900">TrialTree</div>
+          <div className="font-display text-lg font-extrabold tracking-tight text-slate-900">TrialTree</div>
           <div className="text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-slate-400">
             GU Oncology · SoCal
           </div>
@@ -88,9 +88,10 @@ export function Sidebar({ pis, diseases, filter, connected, lastSummary, onChang
       {/* AI finder */}
       <a
         href="/find"
-        className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-center text-sm font-semibold text-blue-700 hover:bg-blue-100"
+        className="group flex items-center justify-center gap-1.5 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-3 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lift"
       >
-        ✨ Find a trial with AI
+        <span>✨</span> Find a trial with AI
+        <span className="transition-transform duration-200 group-hover:translate-x-0.5">→</span>
       </a>
 
       {/* Filters */}
