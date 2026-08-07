@@ -60,8 +60,9 @@ export function TreeFlow({
         minZoom={0.2}
         maxZoom={1.75}
         proOptions={{ hideAttribution: true }}
-        // Kiosk: lock interaction so a bumped TV/E-Ink panel can't scroll away.
-        nodesDraggable={!kiosk}
+        // Nodes are click-to-drill, not draggable (the tree auto-refits, so
+        // dragging is pointless) — this also gives a proper click cursor.
+        nodesDraggable={false}
         nodesConnectable={false}
         elementsSelectable={!kiosk}
         panOnDrag={!kiosk}
