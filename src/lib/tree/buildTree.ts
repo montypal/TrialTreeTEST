@@ -292,6 +292,9 @@ export function buildTree(
       type: 'decision',
       position: { x: p.x - p.width / 2, y: p.y - p.height / 2 },
       data: headerData,
+      // Explicit dims so the MiniMap can render node blips (v12 needs these).
+      width: p.width,
+      height: p.height,
       style: { width: NODE_W },
     });
   }
@@ -312,6 +315,8 @@ export function buildTree(
           id: `trial-${t.id}`,
           type: 'trial',
           position: { x: p.x - TRIAL_W / 2, y: p.y - TRIAL_H / 2 },
+          width: TRIAL_W,
+          height: TRIAL_H,
           data: {
             title: t.title,
             phase: t.phase,
