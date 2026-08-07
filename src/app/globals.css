@@ -191,9 +191,9 @@ body {
   z-index: 10;
 }
 
-/* React Flow theming — clean, flat, professional canvas */
+/* React Flow theming — smooth, even diagonal gradient canvas (no patches) */
 .react-flow {
-  background: #f6f8fb;
+  background: linear-gradient(145deg, #e7efff 0%, #f2f6fc 48%, #f3f8f6 60%, #e6f4ed 100%);
 }
 .react-flow__edge-path {
   stroke: #c2cede; /* soft slate-blue */
