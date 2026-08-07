@@ -50,13 +50,6 @@ export function TreeFlow({
   return (
     <ReactFlowProvider>
       <div className="relative h-full w-full">
-        {!kiosk && (
-          <div className="canvas-aurora">
-            <span />
-            <span />
-            <span />
-          </div>
-        )}
         <ReactFlow
           nodes={nodes}
           edges={edges}
