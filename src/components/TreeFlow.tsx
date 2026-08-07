@@ -49,9 +49,17 @@ export function TreeFlow({
 
   return (
     <ReactFlowProvider>
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
+      <div className="relative h-full w-full">
+        {!kiosk && (
+          <div className="canvas-aurora">
+            <span />
+            <span />
+            <span />
+          </div>
+        )}
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
         nodeTypes={nodeTypes}
         onNodeClick={onNodeClick}
         onPaneClick={onPaneClick}
@@ -78,7 +86,8 @@ export function TreeFlow({
             drifts off-screen. Keyed on node count so it doesn't fight the user's
             pan/zoom on cosmetic-only refreshes. */}
         <AutoFit count={nodes.length} />
-      </ReactFlow>
+        </ReactFlow>
+      </div>
     </ReactFlowProvider>
   );
 }
