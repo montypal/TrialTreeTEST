@@ -38,6 +38,8 @@ export async function GET(_req: NextRequest) {
       kind: n.kind,
       parentId: n.parentId,
       sortOrder: n.sortOrder,
+      // Curated trees store their axis label ("Stage"/"Histology"/"Line") in notes.
+      tag: n.notes,
     })),
     trials: trials.map((t) => ({
       id: t.id,

@@ -304,9 +304,9 @@ export function AdminClient() {
               <div className="mb-2 font-semibold uppercase tracking-wider text-slate-400">Legend</div>
               <div className="grid grid-cols-2 gap-x-5 gap-y-1.5">
                 <LegendDot color="bg-blue-500" label="Cancer type" />
-                <LegendDot color="bg-violet-500" label="Disease state" />
-                <LegendDot color="bg-emerald-500" label="Biomarker" />
-                <LegendDot color="bg-amber-500" label="Approach" />
+                <LegendDot color="bg-violet-500" label="Stage" />
+                <LegendDot color="bg-emerald-500" label="Histology" />
+                <LegendDot color="bg-amber-500" label="Line" />
               </div>
               <div className="mt-2.5 flex items-center gap-4 border-t border-slate-100 pt-2 text-slate-500">
                 <span className="inline-flex items-center gap-1.5">

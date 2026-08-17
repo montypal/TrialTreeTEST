@@ -45,6 +45,8 @@ type RNode = {
   kind: DecisionNodeDTO['kind'];
   parentId: string | null;
   synthetic?: boolean;
+  /** Axis label for curated nodes (Stage / Histology / Line). */
+  tag?: string | null;
 };
 
 function trialMatchesFilter(trial: TrialDTO, filter: TreeFilter): boolean {
@@ -126,9 +128,14 @@ export function buildTree(
   const pushReal = (ids: Iterable<string>) => {
     for (const id of ids) {
       const n = byId.get(id);
-      if (n) rnodes.push({ id, label: n.label, kind: n.kind, parentId: n.parentId });
+      if (n) rnodes.push({ id, label: n.label, kind: n.kind, parentId: n.parentId, tag: n.tag });
     }
   };
+
+  // Empty branches are hidden only when actively filtering (by center/PI), so a
+  // filter still narrows the view — but a hand-authored skeleton with no trials
+  // yet always renders its structure.
+  const filtering = !!(filter.locationSlug || filter.pi);
 
   if (stepped && !searching && !expandAll) {
     // Stepped map: show ONE level at a time — the current node and its immediate
@@ -168,13 +175,13 @@ export function buildTree(
     } else if (eff) {
       // A cancer / state / biomarker node → show it + its next level (counts).
       const node = byId.get(eff)!;
-      rnodes.push({ id: node.id, label: node.label, kind: node.kind, parentId: null });
+      rnodes.push({ id: node.id, label: node.label, kind: node.kind, parentId: null, tag: node.tag });
       trialsByNode.set(node.id, subtreeTrials(node.id));
       // Sub-branches that are further decision nodes (e.g. biomarkers)…
       for (const id of childDecisions.get(eff) ?? []) {
         const k = byId.get(id)!;
-        if (subtreeTrials(k.id).length === 0) continue;
-        rnodes.push({ id: k.id, label: k.label, kind: k.kind, parentId: node.id });
+        if (filtering && subtreeTrials(k.id).length === 0) continue;
+        rnodes.push({ id: k.id, label: k.label, kind: k.kind, parentId: node.id, tag: k.tag });
         trialsByNode.set(k.id, subtreeTrials(k.id));
       }
       // …plus treatment-approach groups for trials sitting directly on this node.
@@ -196,8 +203,8 @@ export function buildTree(
     } else {
       // Top level → the cancer-type choices.
       for (const r of data.decisionNodes.filter((n) => !n.parentId)) {
-        if (subtreeTrials(r.id).length === 0) continue;
-        rnodes.push({ id: r.id, label: r.label, kind: r.kind, parentId: null });
+        if (filtering && subtreeTrials(r.id).length === 0) continue;
+        rnodes.push({ id: r.id, label: r.label, kind: r.kind, parentId: null, tag: r.tag });
         trialsByNode.set(r.id, subtreeTrials(r.id));
       }
       collapse = true;
@@ -283,6 +290,7 @@ export function buildTree(
     const held = trialsByNode.get(n.id) ?? [];
     const headerData: DecisionNodeData = { label: n.label, kind: n.kind };
     if (n.synthetic) headerData.tag = 'Approach';
+    else if (n.tag) headerData.tag = n.tag;
     if (held.length && (collapse || n.synthetic)) {
       headerData.trialCount = held.length;
       headerData.recruitingCount = recruitingUnder(held);

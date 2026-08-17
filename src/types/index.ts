@@ -9,6 +9,8 @@ export interface DecisionNodeDTO {
   kind: NodeKind;
   parentId: string | null;
   sortOrder: number;
+  /** Optional axis label shown on the node (e.g. "Stage", "Histology", "Line"). */
+  tag?: string | null;
 }
 
 export interface TrialLocationDTO {

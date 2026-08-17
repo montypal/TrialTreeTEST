@@ -60,6 +60,9 @@ export function OutlineBrowser({
   onSelectTrial: (t: TrialDTO) => void;
 }) {
   const searching = !!filter.search?.trim();
+  // Hide empty branches only while filtering; otherwise show the full (possibly
+  // trial-less) hand-authored structure.
+  const filtering = !!(filter.locationSlug || filter.pi || filter.search?.trim());
 
   const { roots, childMap, directTrials, subtree } = useMemo(() => {
     const trials = data.trials.filter((t) => matchesFilter(t, filter));
@@ -135,15 +138,15 @@ export function OutlineBrowser({
 
   const renderNode = (node: DecisionNodeDTO, depth: number): ReactNode => {
     const st = subtree(node.id);
-    if (!st.length) return null;
-    const kids = (childMap.get(node.id) ?? []).filter((c) => subtree(c.id).length);
+    if (filtering && !st.length) return null;
+    const kids = (childMap.get(node.id) ?? []).filter((c) => !filtering || subtree(c.id).length);
     return (
       <div key={node.id}>
         <Row
           depth={depth}
           open={open(node.id)}
           onClick={() => toggle(node.id)}
-          tag={KIND_TAG[node.kind] ?? ''}
+          tag={node.tag ?? KIND_TAG[node.kind] ?? ''}
           accent={KIND_ACCENT[node.kind] ?? 'text-slate-300'}
           label={node.label}
           count={st.length}
@@ -159,7 +162,7 @@ export function OutlineBrowser({
     );
   };
 
-  const empty = roots.every((r) => subtree(r.id).length === 0);
+  const empty = filtering ? roots.every((r) => subtree(r.id).length === 0) : roots.length === 0;
 
   return (
     <div className="h-full overflow-y-auto px-4 py-5">

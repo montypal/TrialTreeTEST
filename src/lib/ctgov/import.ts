@@ -63,19 +63,9 @@ const BRANCHES: Branch[] = [
       return 'Other / unspecified';
     },
   },
-  {
-    slug: 'renal',
-    typeLabel: 'Renal Cell Carcinoma',
-    condition: 'renal cell carcinoma OR kidney cancer',
-    classifyState: (t) => {
-      if (/non.?clear.?cell|papillary|chromophobe|collecting duct|medullary/.test(t))
-        return 'Non-clear-cell';
-      if (/clear.?cell|ccrcc/.test(t)) return 'Clear-cell';
-      if (/adjuvant|neoadjuvant|perioperative/.test(t)) return 'Adjuvant / Perioperative';
-      if (/metastatic|advanced|\bm1\b/.test(t)) return 'Metastatic / Advanced';
-      return 'Other / unspecified';
-    },
-  },
+  // NOTE: Renal Cell Carcinoma is now a hand-authored (curated) tree — see
+  // src/lib/tree/curated.ts. It is intentionally NOT auto-classified here, so a
+  // CT.gov re-import won't recreate the old auto structure over the curated one.
 ];
 
 /** Match a CT.gov facility to one of our SoCal centers, else null. */
