@@ -4,18 +4,14 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { TreeData, TreeFilter, TrialDTO, DecisionNodeDTO } from '@/types';
 import { treatmentClass, CLASS_ORDER } from '@/lib/treatmentClass';
 import { centerBySlug } from '@/lib/locations';
+import { NODE, hueFor, type CancerHue } from '@/lib/cancerColors';
 
+// Status colors (semantic — green always means "recruiting").
 const DOT: Record<string, string> = {
   RECRUITING: 'bg-emerald-500',
   WAITLISTED: 'bg-amber-500',
   CLOSED: 'bg-slate-400',
   SUSPENDED: 'bg-rose-500',
-};
-const KIND_ACCENT: Record<string, string> = {
-  DISEASE_TYPE: 'text-blue-700',
-  DISEASE_STATE: 'text-violet-700',
-  BIOMARKER: 'text-emerald-700',
-  LINE_OF_THERAPY: 'text-amber-700',
 };
 const KIND_TAG: Record<string, string> = {
   DISEASE_TYPE: 'Cancer',
@@ -107,7 +103,7 @@ export function OutlineBrowser({
     });
   const open = (id: string) => searching || expanded.has(id);
 
-  const renderTrials = (nodeId: string, depth: number): ReactNode => {
+  const renderTrials = (nodeId: string, depth: number, hue: CancerHue): ReactNode => {
     const own = directTrials.get(nodeId) ?? [];
     if (!own.length) return null;
     const byClass = new Map<string, TrialDTO[]>();
@@ -125,7 +121,7 @@ export function OutlineBrowser({
             open={open(gid)}
             onClick={() => toggle(gid)}
             tag="Approach"
-            accent="text-amber-300"
+            accent={NODE[hue].LINE_OF_THERAPY.accent}
             label={c}
             count={ts.length}
             rec={ts.filter(isRecruiting).length}
@@ -136,7 +132,8 @@ export function OutlineBrowser({
     });
   };
 
-  const renderNode = (node: DecisionNodeDTO, depth: number): ReactNode => {
+  // `hue` is the cancer's color, set at the root and inherited by every row.
+  const renderNode = (node: DecisionNodeDTO, depth: number, hue: CancerHue): ReactNode => {
     const st = subtree(node.id);
     if (filtering && !st.length) return null;
     const kids = (childMap.get(node.id) ?? []).filter((c) => !filtering || subtree(c.id).length);
@@ -147,15 +144,15 @@ export function OutlineBrowser({
           open={open(node.id)}
           onClick={() => toggle(node.id)}
           tag={node.tag ?? KIND_TAG[node.kind] ?? ''}
-          accent={KIND_ACCENT[node.kind] ?? 'text-slate-300'}
+          accent={NODE[hue][node.kind].accent}
           label={node.label}
           count={st.length}
           rec={st.filter(isRecruiting).length}
         />
         {open(node.id) && (
           <div>
-            {kids.map((c) => renderNode(c, depth + 1))}
-            {renderTrials(node.id, depth + 1)}
+            {kids.map((c) => renderNode(c, depth + 1, hue))}
+            {renderTrials(node.id, depth + 1, hue)}
           </div>
         )}
       </div>
@@ -170,7 +167,7 @@ export function OutlineBrowser({
         {empty ? (
           <div className="py-20 text-center text-slate-400">No trials match your filters.</div>
         ) : (
-          roots.map((r) => renderNode(r, 0))
+          roots.map((r) => renderNode(r, 0, hueFor(r.label)))
         )}
       </div>
     </div>

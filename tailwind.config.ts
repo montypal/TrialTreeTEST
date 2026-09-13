@@ -8,9 +8,10 @@ const config: Config = {
         // High-contrast kiosk palette (works on TVs and E-Ink).
         ink: '#0a0e14',
         canvas: '#0d1320',
+        // Awareness-ribbon colors (source of truth: src/lib/cancerColors.ts).
         prostate: '#3b82f6',
-        bladder: '#f59e0b',
-        renal: '#10b981',
+        bladder: '#8b5cf6',
+        renal: '#f97316',
         recruiting: '#22c55e',
         waitlisted: '#eab308',
         closed: '#6b7280',

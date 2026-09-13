@@ -5,6 +5,7 @@ import { TreeFlow } from '@/components/TreeFlow';
 import { QRCodeBlock } from '@/components/QRCodeBlock';
 import { useTreeStream } from '@/components/useTreeStream';
 import { locationLabel } from '@/lib/locations';
+import { RIBBON_STRIPE } from '@/lib/cancerColors';
 
 export function KioskClient({ locationSlug }: { locationSlug: string }) {
   const filter = useMemo(() => ({ locationSlug }), [locationSlug]);
@@ -44,6 +45,8 @@ export function KioskClient({ locationSlug }: { locationSlug: string }) {
         flash && !eink ? 'animate-flash' : ''
       }`}
     >
+      {/* Brand stripe (hidden in E-Ink mode, which stays pure black & white) */}
+      {!eink && <div className={`h-1.5 w-full shrink-0 ${RIBBON_STRIPE}`} />}
       {/* Header band — high contrast, readable from 5–10 ft */}
       <header className="flex items-center justify-between border-b border-slate-200 bg-white px-8 py-5">
         <div>

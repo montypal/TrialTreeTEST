@@ -3,6 +3,7 @@ import type { Edge, Node } from '@xyflow/react';
 import type { TreeData, TreeFilter, TrialDTO, DecisionNodeDTO } from '@/types';
 import { centerBySlug } from '@/lib/locations';
 import { treatmentClass, CLASS_ORDER } from '@/lib/treatmentClass';
+import { hueFor, type CancerHue } from '@/lib/cancerColors';
 
 // Pure (client-safe) transform: TreeData + filter -> laid-out React Flow graph.
 //
@@ -21,6 +22,8 @@ export type DecisionNodeData = {
   recruitingCount?: number;
   /** Overrides the kind label shown on the node (e.g. "Phase" for a group). */
   tag?: string;
+  /** Which cancer this node belongs to → its brand color. */
+  hue?: CancerHue;
 };
 
 export type TrialNodeData = {
@@ -32,6 +35,7 @@ export type TrialNodeData = {
   statuses: { locationName: string; short: string; status: TrialDTO['locations'][number]['status'] }[];
   cohorts: { label: string; status: string }[];
   compact?: boolean;
+  hue?: CancerHue;
 };
 
 const NODE_W = 220;
@@ -288,7 +292,14 @@ export function buildTree(
   for (const n of rnodes) {
     const p = g.node(n.id);
     const held = trialsByNode.get(n.id) ?? [];
-    const headerData: DecisionNodeData = { label: n.label, kind: n.kind };
+    // Synthetic approach groups are "grp:<stateId>:<class>" — color them by the
+    // cancer their state belongs to.
+    const colorSource = n.synthetic ? n.id.split(':')[1] : n.id;
+    const headerData: DecisionNodeData = {
+      label: n.label,
+      kind: n.kind,
+      hue: hueFor(rootLabel(colorSource, byId)),
+    };
     if (n.synthetic) headerData.tag = 'Approach';
     else if (n.tag) headerData.tag = n.tag;
     if (held.length && (collapse || n.synthetic)) {
@@ -334,6 +345,7 @@ export function buildTree(
             statuses,
             cohorts: t.cohorts.map((c) => ({ label: c.label, status: c.status })),
             compact: true,
+            hue: hueFor(rootLabel(t.decisionNodeId, byId)),
           } satisfies TrialNodeData,
           style: { width: TRIAL_W, height: TRIAL_H },
           draggable: false,

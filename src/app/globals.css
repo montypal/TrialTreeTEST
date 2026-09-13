@@ -74,7 +74,7 @@ body {
 .aurora::after {
   bottom: -20rem;
   right: -14rem;
-  background: radial-gradient(circle at center, rgba(16, 185, 129, 0.34), transparent 62%);
+  background: radial-gradient(circle at center, rgba(249, 115, 22, 0.28), transparent 62%); /* kidney orange */
   animation: float 24s ease-in-out infinite reverse;
 }
 .aurora-3 {
@@ -99,8 +99,10 @@ body {
 }
 
 /* Gradient text used for hero headings */
+/* Headline gradient: the three ribbon colors — prostate blue → bladder purple
+   → kidney orange (deeper shades so it stays legible on white). */
 .text-gradient {
-  background: linear-gradient(100deg, #1e293b 0%, #2563eb 55%, #0ea5e9 100%);
+  background: linear-gradient(100deg, #1d4ed8 0%, #6d28d9 55%, #ea580c 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -193,7 +195,8 @@ body {
 
 /* React Flow theming — smooth, even diagonal gradient canvas (no patches) */
 .react-flow {
-  background: linear-gradient(145deg, #e7efff 0%, #f2f6fc 48%, #f3f8f6 60%, #e6f4ed 100%);
+  /* soft blue → lavender → peach (the ribbon colors, heavily tinted) */
+  background: linear-gradient(145deg, #e8efff 0%, #f1f0fc 45%, #f9f3f3 64%, #fdefe3 100%);
 }
 .react-flow__edge-path {
   stroke: #c2cede; /* soft slate-blue */

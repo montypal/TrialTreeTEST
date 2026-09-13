@@ -2,6 +2,7 @@
 
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import type { TrialNodeData } from '@/lib/tree/buildTree';
+import { TRIAL_BORDER } from '@/lib/cancerColors';
 
 const DOT: Record<string, string> = {
   RECRUITING: 'bg-emerald-500',
@@ -13,7 +14,9 @@ const DOT: Record<string, string> = {
 export function TrialNode({ data }: NodeProps) {
   const d = data as TrialNodeData;
   const anyRecruiting = d.statuses.some((s) => s.status === 'RECRUITING');
-  const accent = anyRecruiting ? 'border-emerald-300' : 'border-slate-200';
+  // Recruiting cards wear their cancer's color; per-site status dots below
+  // still show green for "recruiting".
+  const accent = anyRecruiting ? TRIAL_BORDER[d.hue ?? 'slate'] : 'border-slate-200';
 
   if (d.compact) {
     // Small card used inside the trial grid (hundreds may render at once).

@@ -1,6 +1,7 @@
 'use client';
 
 import { CENTERS } from '@/lib/locations';
+import { RIBBON_STRIPE } from '@/lib/cancerColors';
 import type { TreeFilter } from '@/types';
 
 type Props = {
@@ -29,8 +30,8 @@ function TreeMark() {
       <circle cx="12" cy="4" r="2" fill="currentColor" stroke="none" />
       <circle cx="6" cy="13" r="1.7" fill="currentColor" stroke="none" />
       <circle cx="18" cy="13" r="1.7" fill="currentColor" stroke="none" />
-      <circle cx="6" cy="17.5" r="1.5" fill="#10b981" stroke="none" />
-      <circle cx="18" cy="17.5" r="1.5" fill="#10b981" stroke="none" />
+      <circle cx="6" cy="17.5" r="1.5" fill="#8b5cf6" stroke="none" />
+      <circle cx="18" cy="17.5" r="1.5" fill="#f97316" stroke="none" />
     </svg>
   );
 }
@@ -40,7 +41,8 @@ export function Sidebar({ pis, diseases, filter, connected, lastSummary, onChang
     'mt-1.5 w-full cursor-pointer rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 transition-colors hover:border-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-200';
 
   return (
-    <aside className="flex w-80 shrink-0 flex-col gap-5 overflow-y-auto border-r border-slate-200 bg-white p-5">
+    <aside className="relative flex w-80 shrink-0 flex-col gap-5 overflow-y-auto border-r border-slate-200 bg-white p-5">
+      <div className={`absolute inset-x-0 top-0 h-1 ${RIBBON_STRIPE}`} />
       {/* Brand */}
       <div className="flex items-center gap-2.5">
         <TreeMark />
@@ -88,7 +90,7 @@ export function Sidebar({ pis, diseases, filter, connected, lastSummary, onChang
       {/* AI finder */}
       <a
         href="/find"
-        className="group flex items-center justify-center gap-1.5 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-3 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lift"
+        className="group flex items-center justify-center gap-1.5 rounded-lg bg-gradient-to-r from-blue-600 to-violet-600 px-3 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lift"
       >
         <span>✨</span> Find a trial with AI
         <span className="transition-transform duration-200 group-hover:translate-x-0.5">→</span>

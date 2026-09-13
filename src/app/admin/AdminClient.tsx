@@ -11,34 +11,7 @@ import { TrialDetail } from '@/components/TrialDetail';
 import { DecisionTreeBackdrop } from '@/components/DecisionTreeBackdrop';
 import { useTreeStream } from '@/components/useTreeStream';
 import type { TreeFilter, TrialDTO } from '@/types';
-
-// Signature look per cancer for the welcome picker — falls back to slate.
-const CANCER_STYLE: Record<string, { grad: string; hover: string; badge: string; bar: string }> = {
-  'Prostate Cancer': {
-    grad: 'from-blue-50 to-white',
-    hover: 'hover:border-blue-300',
-    badge: 'bg-blue-100 text-blue-700',
-    bar: 'bg-blue-500',
-  },
-  'Bladder Cancer': {
-    grad: 'from-amber-50 to-white',
-    hover: 'hover:border-amber-300',
-    badge: 'bg-amber-100 text-amber-700',
-    bar: 'bg-amber-500',
-  },
-  'Renal Cell Carcinoma': {
-    grad: 'from-emerald-50 to-white',
-    hover: 'hover:border-emerald-300',
-    badge: 'bg-emerald-100 text-emerald-700',
-    bar: 'bg-emerald-500',
-  },
-};
-const CANCER_FALLBACK = {
-  grad: 'from-slate-50 to-white',
-  hover: 'hover:border-slate-300',
-  badge: 'bg-slate-100 text-slate-700',
-  bar: 'bg-slate-400',
-};
+import { CANCERS, CARD, DOT, hueFor } from '@/lib/cancerColors';
 
 export function AdminClient() {
   const [filter, setFilter] = useState<TreeFilter>({ locationSlug: null, pi: null });
@@ -184,7 +157,7 @@ export function AdminClient() {
 
               <div className="mt-8 flex flex-wrap justify-center gap-4">
                 {diseases.map((d) => {
-                  const s = CANCER_STYLE[d] ?? CANCER_FALLBACK;
+                  const s = CARD[hueFor(d)];
                   const st = diseaseStats.get(d);
                   return (
                     <button
@@ -302,11 +275,12 @@ export function AdminClient() {
           <div className="pointer-events-none absolute bottom-4 right-4 z-10 hidden animate-fade-up sm:block">
             <div className="rounded-xl border border-slate-200 bg-white/80 p-3 text-[0.7rem] shadow-card backdrop-blur">
               <div className="mb-2 font-semibold uppercase tracking-wider text-slate-400">Legend</div>
-              <div className="grid grid-cols-2 gap-x-5 gap-y-1.5">
-                <LegendDot color="bg-blue-500" label="Cancer type" />
-                <LegendDot color="bg-violet-500" label="Stage" />
-                <LegendDot color="bg-emerald-500" label="Histology" />
-                <LegendDot color="bg-amber-500" label="Line" />
+              {/* Nodes are colored by cancer (ribbon colors); the tag on each
+                  node spells out its axis (Stage / Histology / Line). */}
+              <div className="flex items-center gap-4">
+                {CANCERS.map((c) => (
+                  <LegendDot key={c.label} color={DOT[c.hue]} label={c.short} />
+                ))}
               </div>
               <div className="mt-2.5 flex items-center gap-4 border-t border-slate-100 pt-2 text-slate-500">
                 <span className="inline-flex items-center gap-1.5">

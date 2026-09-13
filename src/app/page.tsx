@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { CENTERS } from '@/lib/locations';
+import { CANCERS, CHIP, DOT, RIBBON_STRIPE } from '@/lib/cancerColors';
 
 const FEATURES = [
   {
@@ -18,13 +19,14 @@ const FEATURES = [
     title: 'Clinic-ready kiosks',
     body: 'Full-screen boards for waiting-room TVs and E-Ink panels, each with a scan-to-update QR code.',
     icon: 'M4 5h16v10H4zM8 19h8M12 15v4',
-    tint: 'from-emerald-500/15 to-emerald-500/0 text-emerald-600 ring-emerald-200',
+    tint: 'from-orange-500/15 to-orange-500/0 text-orange-600 ring-orange-200',
   },
 ];
 
 export default function Home() {
   return (
     <main className="relative min-h-screen overflow-hidden text-slate-800">
+      <div className={`absolute inset-x-0 top-0 z-20 h-1 ${RIBBON_STRIPE}`} />
       <div className="aurora">
         <div className="aurora-3" />
       </div>
@@ -46,8 +48,8 @@ export default function Home() {
               <circle cx="12" cy="4" r="2" fill="currentColor" stroke="none" />
               <circle cx="6" cy="13" r="1.7" fill="currentColor" stroke="none" />
               <circle cx="18" cy="13" r="1.7" fill="currentColor" stroke="none" />
-              <circle cx="6" cy="17.5" r="1.5" fill="#10b981" stroke="none" />
-              <circle cx="18" cy="17.5" r="1.5" fill="#10b981" stroke="none" />
+              <circle cx="6" cy="17.5" r="1.5" fill="#8b5cf6" stroke="none" />
+              <circle cx="18" cy="17.5" r="1.5" fill="#f97316" stroke="none" />
             </svg>
             <h1 className="font-display text-5xl font-extrabold tracking-tight text-gradient sm:text-6xl">
               TrialTree
@@ -62,6 +64,19 @@ export default function Home() {
             <span className="font-semibold text-slate-800">City of Hope, UCLA, UCSD, UCI, and USC</span> —
             searchable, kept current by text message, and displayed on clinic screens.
           </p>
+
+          {/* The three cancers, each in its awareness-ribbon color. */}
+          <div className="mt-5 flex flex-wrap items-center gap-2">
+            {CANCERS.map((c) => (
+              <span
+                key={c.label}
+                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold ring-1 ${CHIP[c.hue]}`}
+              >
+                <span className={`h-2 w-2 rounded-full ${DOT[c.hue]}`} />
+                {c.short} cancer
+              </span>
+            ))}
+          </div>
         </div>
 
         {/* Primary CTAs */}

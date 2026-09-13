@@ -4,20 +4,28 @@
 // welcome screen. Branch lines draw themselves in, nodes gently breathe, and
 // soft pulses travel down a few branches. Pure SVG — no dependencies.
 
+import { HUE_HEX } from '@/lib/cancerColors';
+
 type Node = { id: number; x: number; y: number; r: number; c: string };
 
+const ROOT = '#6366f1'; // indigo — sits between the three cancer colors
+const PROSTATE = HUE_HEX.blue;
+const BLADDER = HUE_HEX.purple;
+const KIDNEY = HUE_HEX.orange;
+
+// The root splits into the three cancers; each subtree keeps its cancer's color.
 const NODES: Node[] = [
-  { id: 0, x: 110, y: 260, r: 11, c: '#3b82f6' },
-  { id: 1, x: 360, y: 120, r: 8, c: '#8b5cf6' },
-  { id: 2, x: 360, y: 260, r: 8, c: '#10b981' },
-  { id: 3, x: 360, y: 400, r: 8, c: '#f59e0b' },
-  { id: 4, x: 620, y: 70, r: 6.5, c: '#3b82f6' },
-  { id: 5, x: 620, y: 165, r: 6.5, c: '#10b981' },
-  { id: 6, x: 620, y: 260, r: 6.5, c: '#8b5cf6' },
-  { id: 7, x: 620, y: 355, r: 6.5, c: '#f59e0b' },
-  { id: 8, x: 620, y: 450, r: 6.5, c: '#10b981' },
-  { id: 9, x: 840, y: 165, r: 5.5, c: '#3b82f6' },
-  { id: 10, x: 840, y: 355, r: 5.5, c: '#8b5cf6' },
+  { id: 0, x: 110, y: 260, r: 11, c: ROOT },
+  { id: 1, x: 360, y: 120, r: 8, c: PROSTATE },
+  { id: 2, x: 360, y: 260, r: 8, c: BLADDER },
+  { id: 3, x: 360, y: 400, r: 8, c: KIDNEY },
+  { id: 4, x: 620, y: 70, r: 6.5, c: PROSTATE },
+  { id: 5, x: 620, y: 165, r: 6.5, c: PROSTATE },
+  { id: 6, x: 620, y: 260, r: 6.5, c: BLADDER },
+  { id: 7, x: 620, y: 355, r: 6.5, c: KIDNEY },
+  { id: 8, x: 620, y: 450, r: 6.5, c: KIDNEY },
+  { id: 9, x: 840, y: 165, r: 5.5, c: PROSTATE },
+  { id: 10, x: 840, y: 355, r: 5.5, c: KIDNEY },
 ];
 
 const EDGES: [number, number][] = [
@@ -33,8 +41,9 @@ const EDGES: [number, number][] = [
   [7, 10],
 ];
 
-// Which edges carry a traveling pulse.
-const PULSES = [0, 2, 4, 7];
+// Which edges carry a traveling pulse — one down each cancer's branch, plus a
+// second level on bladder, so all three colors are always in motion.
+const PULSES = [0, 1, 2, 5];
 
 const byId = (id: number) => NODES[id];
 
