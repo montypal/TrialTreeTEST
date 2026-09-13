@@ -46,8 +46,14 @@ export function cleanPi(raw: string | null | undefined): string | null {
   if (/\d/.test(n)) return null;
 
   const tokens = n.split(' ').filter(Boolean);
-  if (tokens.length < 2 || tokens.length > 5) return null; // want first + last, not a phrase
-  if (tokens.every((t) => t.length <= 2)) return null; // all-initials / abbreviations
+  if (tokens.length > 5) return null; // a phrase, not a person
+  if (tokens.length === 1) {
+    // The curated trial lists name PIs by surname only ("McKay"); accept a
+    // single real-looking word (this also keeps short surnames like "Li").
+    if (!/^[A-Za-z][A-Za-z'’-]+$/.test(tokens[0])) return null;
+  } else if (tokens.every((t) => t.length <= 2)) {
+    return null; // all-initials / abbreviations
+  }
 
   // Title-case for consistent display.
   return tokens.map((t) => t[0].toUpperCase() + t.slice(1)).join(' ');

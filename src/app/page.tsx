@@ -11,7 +11,7 @@ const FEATURES = [
   },
   {
     title: 'AI trial matching',
-    body: 'Describe a de-identified scenario and get ranked, reasoned matches across all five centers.',
+    body: 'Describe a de-identified scenario and get ranked, reasoned matches across every center.',
     icon: 'M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9zM19 15l.9 2.4L22 18l-2.1.6L19 21l-.9-2.4L16 18l2.1-.6z',
     tint: 'from-violet-500/15 to-violet-500/0 text-violet-600 ring-violet-200',
   },
@@ -61,7 +61,7 @@ export default function Home() {
 
           <p className="mt-6 max-w-2xl text-lg leading-relaxed text-slate-600">
             A living map of recruiting genitourinary cancer trials across{' '}
-            <span className="font-semibold text-slate-800">City of Hope, UCLA, UCSD, UCI, and USC</span> —
+            <span className="font-semibold text-slate-800">Cedars-Sinai, City of Hope, UCLA, UCSD, UCI, and USC</span> —
             searchable, kept current by text message, and displayed on clinic screens.
           </p>
 

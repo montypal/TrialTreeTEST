@@ -1,4 +1,6 @@
 // Canonical SoCal GU oncology centers + fuzzy resolution helpers.
+// Only Cedars-Sinai and UC San Diego have trials so far (from their lists);
+// the others show none until their lists are added to curatedData.ts.
 // The AI parser returns a free-text institution name; we normalize it to a slug.
 
 export type CenterDef = {
@@ -10,6 +12,12 @@ export type CenterDef = {
 };
 
 export const CENTERS: CenterDef[] = [
+  {
+    slug: 'cedars-sinai',
+    name: 'Cedars-Sinai',
+    shortName: 'Cedars',
+    aliases: ['cedars-sinai', 'cedars sinai', 'cedars', 'csmc', 'samuel oschin'],
+  },
   {
     slug: 'city-of-hope',
     name: 'City of Hope',
@@ -26,7 +34,7 @@ export const CENTERS: CenterDef[] = [
     slug: 'ucsd',
     name: 'UC San Diego Health',
     shortName: 'UCSD',
-    aliases: ['ucsd', 'uc san diego', 'university of california san diego', 'moores', 'la jolla'],
+    aliases: ['ucsd', 'uc san diego', 'university of california san diego', 'moores', 'la jolla', 'hillcrest'],
   },
   {
     slug: 'uci',

@@ -70,9 +70,9 @@ export function DevTools() {
       const res = await fetch(path, { method: 'POST' });
       const json = await res.json();
       const detail =
-        json.status === 'IMPORTED'
-          ? `${json.created} new, ${json.updated} updated, ${json.siteRowsPreserved} edits kept`
-          : (json.message ?? JSON.stringify(json));
+        json.status === 'CURATED'
+          ? `${json.trials} trials, ${json.siteLinks} site links`
+          : (json.message ?? json.error ?? JSON.stringify(json));
       setResult(`${label}: ${detail}`.slice(0, 220));
     } catch (e) {
       setResult(e instanceof Error ? e.message : 'request failed');
@@ -106,22 +106,14 @@ export function DevTools() {
       </p>
 
       <div className="mt-3 text-xs font-semibold uppercase tracking-wider text-slate-400">Data</div>
-      <div className="mt-1 grid grid-cols-2 gap-2">
-        <button
-          disabled={busy}
-          onClick={() => runEndpoint('/api/dev/import', 'Import')}
-          className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
-        >
-          Import CT.gov trials
-        </button>
-        <button
-          disabled={busy}
-          onClick={() => runEndpoint('/api/dev/seed', 'Seed')}
-          className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50"
-        >
-          Load demo seed
-        </button>
-      </div>
+      {/* Trials are human-curated (src/lib/tree/curatedData.ts); this reloads them. */}
+      <button
+        disabled={busy}
+        onClick={() => runEndpoint('/api/dev/curate', 'Reload')}
+        className="mt-1 w-full rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+      >
+        Reload curated trials
+      </button>
 
       <div className="mt-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
         Simulate a text

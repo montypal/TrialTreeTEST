@@ -26,6 +26,8 @@ export async function POST(req: NextRequest) {
     prisma.decisionNode.findMany(),
     prisma.trial.findMany({
       include: { locations: { include: { location: true } }, cohorts: true },
+      // Stable order → stable catalog text → prompt-cache hits across queries.
+      orderBy: { id: 'asc' },
     }),
   ]);
 
@@ -42,26 +44,29 @@ export async function POST(req: NextRequest) {
   };
 
   // Build the compact catalog for the model, and a lookup for hydrating results.
-  const byNct = new Map<string, (typeof trials)[number]>();
+  // Every trial gets a short ref ("T12") — most curated trials have no NCT id,
+  // so NCT can't be the key.
+  const byRef = new Map<string, (typeof trials)[number]>();
   const catalogItems: CatalogItem[] = [];
-  for (const t of trials) {
-    if (!t.nctId) continue;
-    byNct.set(t.nctId, t);
+  trials.forEach((t, i) => {
+    const ref = `T${i + 1}`;
+    byRef.set(ref, t);
     const sites = t.locations
       .map((l) => `${centerBySlug(l.location.slug)?.shortName ?? l.location.name}(${cap(l.status)})`)
       .join(', ');
     catalogItems.push({
+      ref,
       nctId: t.nctId,
       phase: t.phase,
       path: pathOf(t.decisionNodeId),
       title: t.title,
       sites,
-      eligibility: t.eligibilityCriteria ? t.eligibilityCriteria.replace(/\s+/g, ' ').slice(0, 240) : null,
+      eligibility: t.eligibilityCriteria ? t.eligibilityCriteria.replace(/\s+/g, ' ').slice(0, 320) : null,
     });
-  }
+  });
 
   if (catalogItems.length === 0) {
-    return NextResponse.json({ error: 'No trials loaded yet — run the import first.' }, { status: 400 });
+    return NextResponse.json({ error: 'No trials loaded yet.' }, { status: 400 });
   }
 
   let result;
@@ -74,10 +79,10 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Hydrate each match with the full trial details for display (drop hallucinated ids).
+  // Hydrate each match with the full trial details for display (drop hallucinated refs).
   const matches = result.matches
     .map((m) => {
-      const t = byNct.get(m.nct_id);
+      const t = byRef.get(m.trial_ref);
       if (!t) return null;
       const trial: TrialDTO = {
         id: t.id,

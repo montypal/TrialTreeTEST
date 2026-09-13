@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { TreeData, TreeFilter, TrialDTO, DecisionNodeDTO } from '@/types';
-import { treatmentClass, CLASS_ORDER } from '@/lib/treatmentClass';
 import { centerBySlug } from '@/lib/locations';
 import { NODE, hueFor, type CancerHue } from '@/lib/cancerColors';
 
@@ -103,34 +102,11 @@ export function OutlineBrowser({
     });
   const open = (id: string) => searching || expanded.has(id);
 
-  const renderTrials = (nodeId: string, depth: number, hue: CancerHue): ReactNode => {
-    const own = directTrials.get(nodeId) ?? [];
-    if (!own.length) return null;
-    const byClass = new Map<string, TrialDTO[]>();
-    for (const t of own) {
-      const c = treatmentClass(t);
-      (byClass.get(c) ?? byClass.set(c, []).get(c)!).push(t);
-    }
-    return CLASS_ORDER.filter((c) => byClass.has(c)).map((c) => {
-      const ts = byClass.get(c)!;
-      const gid = `grp:${nodeId}:${c}`;
-      return (
-        <div key={gid}>
-          <Row
-            depth={depth}
-            open={open(gid)}
-            onClick={() => toggle(gid)}
-            tag="Approach"
-            accent={NODE[hue].LINE_OF_THERAPY.accent}
-            label={c}
-            count={ts.length}
-            rec={ts.filter(isRecruiting).length}
-          />
-          {open(gid) && ts.map((t) => <TrialRow key={t.id} depth={depth + 1} trial={t} onClick={() => onSelectTrial(t)} />)}
-        </div>
-      );
-    });
-  };
+  // Trials attached directly to a node, listed under it — no auto-grouping.
+  const renderTrials = (nodeId: string, depth: number): ReactNode =>
+    (directTrials.get(nodeId) ?? []).map((t) => (
+      <TrialRow key={t.id} depth={depth} trial={t} onClick={() => onSelectTrial(t)} />
+    ));
 
   // `hue` is the cancer's color, set at the root and inherited by every row.
   const renderNode = (node: DecisionNodeDTO, depth: number, hue: CancerHue): ReactNode => {
@@ -152,7 +128,7 @@ export function OutlineBrowser({
         {open(node.id) && (
           <div>
             {kids.map((c) => renderNode(c, depth + 1, hue))}
-            {renderTrials(node.id, depth + 1, hue)}
+            {renderTrials(node.id, depth + 1)}
           </div>
         )}
       </div>

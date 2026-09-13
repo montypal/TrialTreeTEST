@@ -2,18 +2,17 @@ import dagre from 'dagre';
 import type { Edge, Node } from '@xyflow/react';
 import type { TreeData, TreeFilter, TrialDTO, DecisionNodeDTO } from '@/types';
 import { centerBySlug } from '@/lib/locations';
-import { treatmentClass, CLASS_ORDER } from '@/lib/treatmentClass';
 import { hueFor, type CancerHue } from '@/lib/cancerColors';
 
 // Pure (client-safe) transform: TreeData + filter -> laid-out React Flow graph.
 //
-// Rendering rules:
-//   • Overview (default): decision nodes only, each leaf shows a
-//     "N trials · M recruiting" badge — the whole map fits one screen.
-//   • Drill into a branch: shows the next level of grouping (counts) until you
-//     reach a "terminal" node, whose trials are grouped by PHASE into a small
-//     sub-tree (Phase III–IV / II / I) with the trial cards under each.
-//   • expandAll (kiosk) / search: shows the actual trial cards in a grid.
+// The tree's shape comes entirely from the curated data — no auto-grouping is
+// added. Rendering rules:
+//   • Stepped map (admin): one level at a time — the current node, its branches
+//     as "N trials · M recruiting" counts, and trials attached directly to it
+//     as cards.
+//   • Drill into a terminal branch: its trials as cards.
+//   • expandAll (kiosk) / search: the actual trial cards under their nodes.
 
 export type DecisionNodeData = {
   label: string;
@@ -91,9 +90,9 @@ export function buildTree(
   const stepped = !!opts.stepped;
 
   const byId = new Map(data.decisionNodes.map((n) => [n.id, n] as const));
-  // Keep synthetic "grp:" ids; ignore a stale real id (e.g. after a re-import).
+  // Ignore a stale id (e.g. after the curated data is reloaded).
   const rawFocus = opts.focusNodeId ?? null;
-  const focusNodeId = rawFocus && (rawFocus.startsWith('grp:') || byId.has(rawFocus)) ? rawFocus : null;
+  const focusNodeId = rawFocus && byId.has(rawFocus) ? rawFocus : null;
   const childDecisions = new Map<string, string[]>();
   for (const n of data.decisionNodes) {
     if (!n.parentId) continue;
@@ -128,6 +127,9 @@ export function buildTree(
   let rnodes: RNode[] = [];
   let trialsByNode = new Map<string, TrialDTO[]>();
   let collapse = true;
+  // Trials to draw as cards, when that differs from "all held trials" (the
+  // stepped map shows a node's own trials as cards but its branches as counts).
+  let cardsByNode: Map<string, TrialDTO[]> | null = null;
 
   const pushReal = (ids: Iterable<string>) => {
     for (const id of ids) {
@@ -142,8 +144,8 @@ export function buildTree(
   const filtering = !!(filter.locationSlug || filter.pi);
 
   if (stepped && !searching && !expandAll) {
-    // Stepped map: show ONE level at a time — the current node and its immediate
-    // children as counts (or, at a treatment-approach group, the trials).
+    // Stepped map: show ONE level at a time — the current node, its immediate
+    // branches as counts, and any trials attached directly to it as cards.
     const directByNode = new Map<string, TrialDTO[]>();
     for (const t of trials) {
       (directByNode.get(t.decisionNodeId) ?? directByNode.set(t.decisionNodeId, []).get(t.decisionNodeId)!).push(t);
@@ -167,17 +169,9 @@ export function buildTree(
       : null;
     const eff = focusNodeId ?? diseaseNodeId;
 
-    if (eff && eff.startsWith('grp:')) {
-      // Treatment-approach group → show it + its trials.
-      const parts = eff.split(':');
-      const stateId = parts[1];
-      const cls = parts.slice(2).join(':');
-      const ts = (directByNode.get(stateId) ?? []).filter((t) => treatmentClass(t) === cls);
-      rnodes.push({ id: eff, label: cls, kind: 'LINE_OF_THERAPY', parentId: null, synthetic: true });
-      trialsByNode.set(eff, ts);
-      collapse = false;
-    } else if (eff) {
-      // A cancer / state / biomarker node → show it + its next level (counts).
+    if (eff) {
+      // A node → show it, its branches (as counts), and any trials that sit
+      // directly on it (as cards) — exactly as the clinician's tree defines it.
       const node = byId.get(eff)!;
       rnodes.push({ id: node.id, label: node.label, kind: node.kind, parentId: null, tag: node.tag });
       trialsByNode.set(node.id, subtreeTrials(node.id));
@@ -188,21 +182,9 @@ export function buildTree(
         rnodes.push({ id: k.id, label: k.label, kind: k.kind, parentId: node.id, tag: k.tag });
         trialsByNode.set(k.id, subtreeTrials(k.id));
       }
-      // …plus treatment-approach groups for trials sitting directly on this node.
+      // …plus the trials that sit directly on this node, as cards.
       const own = directByNode.get(eff) ?? [];
-      if (own.length) {
-        const groups = new Map<string, TrialDTO[]>();
-        for (const t of own) {
-          const c = treatmentClass(t);
-          (groups.get(c) ?? groups.set(c, []).get(c)!).push(t);
-        }
-        for (const c of CLASS_ORDER) {
-          const ts = groups.get(c);
-          if (!ts?.length) continue;
-          rnodes.push({ id: `grp:${eff}:${c}`, label: c, kind: 'LINE_OF_THERAPY', parentId: node.id, synthetic: true });
-          trialsByNode.set(`grp:${eff}:${c}`, ts);
-        }
-      }
+      if (own.length) cardsByNode = new Map([[node.id, own]]);
       collapse = true;
     } else {
       // Top level → the cancer-type choices.
@@ -219,21 +201,10 @@ export function buildTree(
     const terminal = !(childDecisions.get(focusNodeId)?.length);
 
     if (terminal) {
-      // Terminal branch: group its trials by treatment approach into a sub-tree.
+      // Terminal branch: its trials hang directly off it as cards.
       collapse = false;
       pushReal(ancestorsOf([focusNodeId])); // path root → focus (context)
-      const groups = new Map<string, TrialDTO[]>();
-      for (const t of focusTrials) {
-        const b = treatmentClass(t);
-        (groups.get(b) ?? groups.set(b, []).get(b)!).push(t);
-      }
-      for (const b of CLASS_ORDER) {
-        const ts = groups.get(b);
-        if (!ts?.length) continue;
-        const sid = `grp:${focusNodeId}:${b}`;
-        rnodes.push({ id: sid, label: b, kind: 'LINE_OF_THERAPY', parentId: focusNodeId, synthetic: true });
-        trialsByNode.set(sid, ts);
-      }
+      trialsByNode = new Map([[focusNodeId, focusTrials]]);
     } else {
       // Non-terminal branch: show the next grouping level as counts.
       collapse = true;
@@ -246,6 +217,10 @@ export function buildTree(
     trialsByNode = groupByNode(trials);
     pushReal(ancestorsOf(trialsByNode.keys()));
   }
+
+  // Which trials render as cards: a stepped node's own trials or, when the view
+  // is expanded (kiosk / search / terminal branch), every held trial.
+  const cards = cardsByNode ?? (collapse ? new Map<string, TrialDTO[]>() : trialsByNode);
 
   const rnodeIds = new Set(rnodes.map((r) => r.id));
   const locSlug = filter.locationSlug ?? null;
@@ -274,9 +249,9 @@ export function buildTree(
     }
   }
 
-  // Trial leaf nodes (only when expanded) — each branches off its group.
-  if (!collapse) {
-    for (const [holderId, ts] of trialsByNode) {
+  // Trial leaf nodes — each branches off the node it belongs to.
+  if (cards.size) {
+    for (const [holderId, ts] of cards) {
       for (const t of ts) {
         const tid = `trial-${t.id}`;
         g.setNode(tid, { width: TRIAL_W, height: TRIAL_H });
@@ -292,17 +267,13 @@ export function buildTree(
   for (const n of rnodes) {
     const p = g.node(n.id);
     const held = trialsByNode.get(n.id) ?? [];
-    // Synthetic approach groups are "grp:<stateId>:<class>" — color them by the
-    // cancer their state belongs to.
-    const colorSource = n.synthetic ? n.id.split(':')[1] : n.id;
     const headerData: DecisionNodeData = {
       label: n.label,
       kind: n.kind,
-      hue: hueFor(rootLabel(colorSource, byId)),
+      hue: hueFor(rootLabel(n.id, byId)),
     };
-    if (n.synthetic) headerData.tag = 'Approach';
-    else if (n.tag) headerData.tag = n.tag;
-    if (held.length && (collapse || n.synthetic)) {
+    if (n.tag) headerData.tag = n.tag;
+    if (held.length && collapse) {
       headerData.trialCount = held.length;
       headerData.recruitingCount = recruitingUnder(held);
     }
@@ -319,8 +290,8 @@ export function buildTree(
   }
 
   // Emit trial leaf nodes.
-  if (!collapse) {
-    for (const [, ts] of trialsByNode) {
+  if (cards.size) {
+    for (const [, ts] of cards) {
       for (const t of ts) {
         const p = g.node(`trial-${t.id}`);
         const statuses = (locSlug ? t.locations.filter((l) => l.locationSlug === locSlug) : t.locations).map(

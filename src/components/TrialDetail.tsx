@@ -74,7 +74,7 @@ export function TrialDetail({ trial, onClose }: { trial: TrialDTO; onClose: () =
         {trial.eligibilityCriteria && (
           <section>
             <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Eligibility
+              About this trial
             </h3>
             <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-600">
               {trial.eligibilityCriteria}
