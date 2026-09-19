@@ -137,8 +137,10 @@ export function OutlineBrowser({
 
   const empty = filtering ? roots.every((r) => subtree(r.id).length === 0) : roots.length === 0;
 
+  // --outline-indent is the per-depth indent step read by Row/TrialRow: tighter
+  // on phones, the original 20px from md up. Pure CSS, so it is SSR-safe.
   return (
-    <div className="h-full overflow-y-auto px-4 py-5">
+    <div className="h-full overflow-y-auto px-2 py-3 [--outline-indent:12px] md:px-4 md:py-5 md:[--outline-indent:20px]">
       <div className="mx-auto max-w-3xl rounded-xl border border-slate-200 bg-white p-2 shadow-sm">
         {empty ? (
           <div className="py-20 text-center text-slate-400">No trials match your filters.</div>
@@ -146,9 +148,16 @@ export function OutlineBrowser({
           roots.map((r) => renderNode(r, 0, hueFor(r.label)))
         )}
       </div>
+      {/* Keeps the last row clear of the iOS home indicator (0px on desktop). */}
+      <div aria-hidden="true" className="h-[env(safe-area-inset-bottom)]" />
     </div>
   );
 }
+
+// Left padding for a row at `depth`: 10px + one indent step per level.
+const indentStyle = (depth: number) => ({
+  paddingLeft: `calc(10px + var(--outline-indent, 20px) * ${depth})`,
+});
 
 function Row({
   depth,
@@ -172,19 +181,21 @@ function Row({
   return (
     <button
       onClick={onClick}
-      className="flex w-full items-center gap-2 rounded-lg py-2 pr-3 text-left hover:bg-slate-100"
-      style={{ paddingLeft: 10 + depth * 20 }}
+      className="flex w-full items-center gap-2 rounded-lg py-2.5 pr-3 text-left hover:bg-slate-100 md:py-2"
+      style={indentStyle(depth)}
     >
       <span className={`inline-block w-3 shrink-0 text-slate-400 transition-transform ${open ? 'rotate-90' : ''}`}>
         ▸
       </span>
       <span className={`text-[0.58rem] font-bold uppercase tracking-wider ${accent}`}>{tag}</span>
-      <span className="truncate font-semibold text-slate-800">{label}</span>
+      {/* Wraps below lg so long labels stay readable; lg keeps the one-line truncate. */}
+      <span className="min-w-0 break-words font-semibold text-slate-800 lg:truncate">{label}</span>
       <span className="ml-auto flex shrink-0 items-center gap-1.5 text-xs">
         <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-600 ring-1 ring-slate-200">{count}</span>
         {rec > 0 && (
           <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-700 ring-1 ring-emerald-200">
-            {rec} recruiting
+            {rec}
+            <span className="sr-only sm:not-sr-only"> recruiting</span>
           </span>
         )}
       </span>
@@ -197,15 +208,15 @@ function TrialRow({ depth, trial, onClick }: { depth: number; trial: TrialDTO; o
     <button
       onClick={onClick}
       className="group flex w-full items-start gap-2 rounded-lg py-1.5 pr-3 text-left hover:bg-slate-100"
-      style={{ paddingLeft: 10 + depth * 20 }}
+      style={indentStyle(depth)}
     >
       <span className="mt-1 w-3 shrink-0 text-slate-300">•</span>
       <span className="min-w-0 flex-1">
-        <span className="flex items-center gap-2">
+        <span className="flex flex-wrap items-center gap-x-2">
           <span className="text-[0.58rem] font-bold uppercase text-blue-600">{trial.phase ?? 'Trial'}</span>
           {trial.nctId && <span className="text-[0.58rem] text-slate-400">{trial.nctId}</span>}
         </span>
-        <span className="block text-sm leading-snug text-slate-700">{trial.title}</span>
+        <span className="block break-words text-sm leading-snug text-slate-700">{trial.title}</span>
         <span className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[0.65rem] text-slate-500">
           {trial.locations.map((l) => (
             <span key={l.locationSlug} className="inline-flex items-center gap-1">

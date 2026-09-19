@@ -22,11 +22,19 @@ export function QRCodeBlock({ locationSlug, smsNumber }: Props) {
   const href = `sms:${number}?&body=${encodeURIComponent(body)}`;
 
   return (
-    <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-xl">
-      <QRCodeSVG value={href} size={132} level="M" marginSize={2} />
+    <div className="flex items-center gap-2.5 rounded-xl border border-slate-200 bg-white p-2.5 shadow-xl sm:gap-4 sm:rounded-2xl sm:p-4">
+      {/* The SVG has a viewBox, so CSS scales the 132px code down to 88px on
+          phones (pure CSS, so it stays SSR-safe). */}
+      <QRCodeSVG
+        value={href}
+        size={132}
+        level="M"
+        marginSize={2}
+        className="h-[88px] w-[88px] shrink-0 sm:h-[132px] sm:w-[132px]"
+      />
       <div className="max-w-[200px] text-slate-900">
-        <div className="text-lg font-extrabold leading-tight">Update this board</div>
-        <div className="mt-1 text-sm font-medium leading-snug text-slate-700">
+        <div className="text-sm font-extrabold leading-tight sm:text-lg">Update this board</div>
+        <div className="mt-1 hidden text-sm font-medium leading-snug text-slate-700 sm:block">
           Scan to text a change. Closes/opens a trial in seconds — no login.
         </div>
         <div className="mt-1 font-mono text-xs text-slate-500">{number}</div>

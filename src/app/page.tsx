@@ -31,7 +31,9 @@ export default function Home() {
         <div className="aurora-3" />
       </div>
 
-      <div className="relative z-10 mx-auto max-w-5xl px-6 py-16 sm:py-20">
+      {/* Horizontal padding never drops below px-6 (1.5rem) but grows to clear the
+          notch on a landscape iPhone (viewportFit: cover). */}
+      <div className="relative z-10 mx-auto max-w-5xl px-6 pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] py-10 sm:py-16 lg:py-20">
         {/* Hero */}
         <div className="animate-fade-up">
           <div className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-white/70 px-3 py-1 text-xs font-semibold text-blue-700 shadow-sm backdrop-blur">
@@ -51,7 +53,7 @@ export default function Home() {
               <circle cx="6" cy="17.5" r="1.5" fill="#8b5cf6" stroke="none" />
               <circle cx="18" cy="17.5" r="1.5" fill="#f97316" stroke="none" />
             </svg>
-            <h1 className="font-display text-5xl font-extrabold tracking-tight text-gradient sm:text-6xl">
+            <h1 className="font-display text-4xl font-extrabold tracking-tight text-gradient sm:text-5xl lg:text-6xl">
               TrialTree
             </h1>
           </div>
@@ -140,13 +142,15 @@ export default function Home() {
               <li key={c.slug}>
                 <Link
                   href={`/kiosk/${c.slug}`}
-                  className="group flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-card"
+                  className="group flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-card sm:px-4"
                 >
-                  <span>
+                  {/* min-w-0 + break-words: long names/slugs wrap inside the
+                      two-column phone grid instead of overflowing the card. */}
+                  <span className="min-w-0 break-words">
                     <span className="block font-semibold text-slate-800">{c.name}</span>
                     <span className="text-xs text-slate-400">/kiosk/{c.slug}</span>
                   </span>
-                  <span className="text-slate-300 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-blue-500">
+                  <span className="shrink-0 text-slate-300 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-blue-500">
                     →
                   </span>
                 </Link>

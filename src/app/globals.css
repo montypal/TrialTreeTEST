@@ -20,6 +20,14 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+/* Mobile: no grey flash on tap, and no automatic text inflation when an
+   iPhone rotates to landscape. */
+html {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 ::selection {
   background: rgba(37, 99, 235, 0.16);
 }
@@ -182,15 +190,19 @@ body {
   animation: slide-in-right 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-/* React Flow nodes get a subtle hover lift for interactivity */
+/* React Flow nodes get a subtle hover lift for interactivity.
+   The lift only applies on devices that can truly hover — on touch screens
+   :hover sticks after a tap and would leave the node stuck "lifted". */
 .react-flow__node {
   cursor: pointer;
   transition: transform 0.16s ease, filter 0.16s ease;
 }
-.react-flow__node:hover {
-  transform: translateY(-2px);
-  filter: drop-shadow(0 10px 18px rgba(37, 99, 235, 0.16));
-  z-index: 10;
+@media (hover: hover) {
+  .react-flow__node:hover {
+    transform: translateY(-2px);
+    filter: drop-shadow(0 10px 18px rgba(37, 99, 235, 0.16));
+    z-index: 10;
+  }
 }
 
 /* React Flow theming — smooth, even diagonal gradient canvas (no patches) */
@@ -226,6 +238,13 @@ body {
 }
 .react-flow__controls-button svg {
   fill: currentColor;
+}
+/* Finger-sized zoom / fit buttons on touch screens (phones, iPads). */
+@media (pointer: coarse) {
+  .react-flow__controls-button {
+    width: 40px;
+    height: 40px;
+  }
 }
 
 /* Status pills shared by trial nodes and lists */

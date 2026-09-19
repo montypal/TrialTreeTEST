@@ -55,10 +55,15 @@ export function FindClient() {
   };
 
   return (
-    <main className="relative mx-auto max-w-3xl px-6 py-10 text-slate-800">
-      <div className="flex items-center justify-between">
+    <main className="relative mx-auto max-w-3xl px-4 py-10 text-slate-800 sm:px-6 sm:pl-[max(1.5rem,env(safe-area-inset-left))] sm:pr-[max(1.5rem,env(safe-area-inset-right))]">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="font-display text-3xl font-extrabold tracking-tight text-gradient">Find a trial</h1>
-        <Link href="/admin" className="text-sm font-semibold text-blue-600 hover:underline">
+        {/* Padding grows the tap target to 40px tall; the matching negative
+            margins cancel it out so the header layout is unchanged. */}
+        <Link
+          href="/admin"
+          className="-mx-2 -my-2.5 px-2 py-2.5 text-sm font-semibold text-blue-600 hover:underline"
+        >
           Full tree →
         </Link>
       </div>
@@ -83,14 +88,14 @@ export function FindClient() {
         }}
         rows={5}
         placeholder="e.g. 72-year-old with mCRPC, HRR/BRCA2-mutated, progressed on ARPI, ECOG 0–1…"
-        className="mt-4 w-full resize-y rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm leading-relaxed text-slate-800 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-200"
+        className="mt-4 w-full resize-y rounded-xl border border-slate-300 bg-white px-4 py-3 text-base leading-relaxed text-slate-800 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-200 lg:text-sm lg:leading-relaxed"
       />
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <button
           onClick={search}
           disabled={loading || !query.trim()}
-          className="rounded-lg bg-gradient-to-r from-blue-600 to-violet-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lift disabled:translate-y-0 disabled:opacity-50 disabled:shadow-none"
+          className="min-h-11 rounded-lg bg-gradient-to-r from-blue-600 to-violet-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lift disabled:translate-y-0 disabled:opacity-50 disabled:shadow-none lg:min-h-0"
         >
           {loading ? 'Searching the catalog…' : 'Find matching trials'}
         </button>
@@ -106,7 +111,7 @@ export function FindClient() {
               <button
                 key={ex}
                 onClick={() => setQuery(ex)}
-                className="block w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-left text-sm text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                className="block min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-left text-sm text-slate-600 hover:border-slate-300 hover:bg-slate-50 lg:min-h-0"
               >
                 {ex}
               </button>
@@ -167,7 +172,7 @@ export function FindClient() {
 
                   <button
                     onClick={() => setSelected(m.trial)}
-                    className="mt-3 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                    className="mt-3 min-h-10 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 lg:min-h-0"
                   >
                     Full details →
                   </button>
