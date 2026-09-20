@@ -1,6 +1,15 @@
 'use client';
 
-import { useEffect, useMemo, useRef, type CSSProperties, type MouseEvent, type RefObject } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type MouseEvent,
+  type RefObject,
+} from 'react';
 import {
   ReactFlow,
   Background,
@@ -29,6 +38,8 @@ const KIOSK_MIN_ZOOM = 0.05;
 const RESIZE_THRESHOLD = 8;
 /** Let a resize (rotation, split view, a drawer animating) settle before refitting. */
 const RESIZE_DEBOUNCE_MS = 150;
+/** Counted as "zoomed in" (and so worth panning) past this much of the fitted zoom. */
+const ZOOMED_IN_RATIO = 1.05;
 
 /** Keeps the zoom controls clear of the iPhone home indicator, rounded screen
     corners and the landscape notch. Where there are no safe-area insets (all
@@ -73,6 +84,35 @@ export function TreeFlow({
   const minZoom = kiosk ? KIOSK_MIN_ZOOM : MIN_ZOOM;
   const fitViewOptions = useMemo(() => ({ padding: FIT_PADDING, minZoom }), [minZoom]);
 
+  // On touch screens a stray swipe used to drag the whole tree away while the
+  // user was only trying to tap a node. So the canvas holds still: dragging is
+  // off until you deliberately pinch-zoom in, and re-locks when it's re-fitted
+  // (drilling to another level, or tapping "fit"). Mice keep dragging as before.
+  const [touch, setTouch] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(pointer: coarse)');
+    const sync = () => setTouch(mq.matches);
+    sync();
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  }, []);
+
+  const [zoomedIn, setZoomedIn] = useState(false);
+  // The zoom the tree was last framed at — the baseline "zoomed in" compares to.
+  const fittedZoomRef = useRef<number | null>(null);
+  const handleFitted = useCallback((zoom: number) => {
+    fittedZoomRef.current = zoom;
+    setZoomedIn(false);
+  }, []);
+  // Typed loosely on purpose: `unknown` accepts whatever event React Flow passes.
+  const handleMove = useCallback((_event: unknown, viewport: { zoom: number }) => {
+    const fitted = fittedZoomRef.current;
+    setZoomedIn(fitted !== null && viewport.zoom > fitted * ZOOMED_IN_RATIO);
+  }, []);
+
+  // Kiosk never pans. Touch pans only while zoomed in. Mouse pans as before.
+  const panOnDrag = kiosk ? false : touch ? zoomedIn : true;
+
   return (
     <ReactFlowProvider>
       <div ref={containerRef} className="relative h-full w-full">
@@ -89,12 +129,12 @@ export function TreeFlow({
           proOptions={{ hideAttribution: true }}
           // Nodes are click-to-drill, not draggable (the tree auto-refits, so
           // dragging is pointless) — this also gives a proper click cursor.
-          // Touch keeps React Flow's defaults: one-finger pan, pinch-zoom, and
-          // a tap on a node fires onNodeClick.
+          // A tap on a node fires onNodeClick whether or not dragging is on.
           nodesDraggable={false}
           nodesConnectable={false}
           elementsSelectable={!kiosk}
-          panOnDrag={!kiosk}
+          panOnDrag={panOnDrag}
+          onMove={kiosk ? undefined : handleMove}
           zoomOnScroll={!kiosk}
           zoomOnPinch={!kiosk}
           zoomOnDoubleClick={!kiosk}
@@ -107,7 +147,12 @@ export function TreeFlow({
               canvas is resized, so it never drifts off-screen. Keyed on node
               count (not identity) so it doesn't fight the user's pan/zoom on
               cosmetic-only refreshes. */}
-          <AutoFit count={nodes.length} minZoom={minZoom} containerRef={containerRef} />
+          <AutoFit
+            count={nodes.length}
+            minZoom={minZoom}
+            containerRef={containerRef}
+            onFitted={handleFitted}
+          />
         </ReactFlow>
       </div>
     </ReactFlowProvider>
@@ -126,21 +171,31 @@ function AutoFit({
   count,
   minZoom,
   containerRef,
+  onFitted,
 }: {
   count: number;
   minZoom: number;
   containerRef: RefObject<HTMLDivElement>;
+  /** Reports the zoom the tree was framed at, so "zoomed in" has a baseline. */
+  onFitted: (zoom: number) => void;
 }) {
-  const { fitView } = useReactFlow();
+  const { fitView, getZoom } = useReactFlow();
 
   useEffect(() => {
+    let read = 0;
     // Wait one frame so the new nodes are laid out before fitting.
     const raf = requestAnimationFrame(() => {
       // duration 0 = instant snap (crisp on E-Ink, no ghosting).
       void fitView({ padding: FIT_PADDING, duration: 0, minZoom });
+      // Read the resulting zoom a frame later rather than assuming fitView
+      // applied synchronously.
+      read = requestAnimationFrame(() => onFitted(getZoom()));
     });
-    return () => cancelAnimationFrame(raf);
-  }, [count, fitView, minZoom]);
+    return () => {
+      cancelAnimationFrame(raf);
+      cancelAnimationFrame(read);
+    };
+  }, [count, fitView, getZoom, minZoom, onFitted]);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -155,6 +210,7 @@ function AutoFit({
     let latestW = fittedW;
     let latestH = fittedH;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let read = 0;
 
     const observer = new ResizeObserver((entries) => {
       const entry = entries[entries.length - 1];
@@ -176,6 +232,7 @@ function AutoFit({
         fittedW = latestW;
         fittedH = latestH;
         void fitView({ padding: FIT_PADDING, duration: 0, minZoom });
+        read = requestAnimationFrame(() => onFitted(getZoom()));
       }, RESIZE_DEBOUNCE_MS);
     });
 
@@ -183,8 +240,9 @@ function AutoFit({
     return () => {
       observer.disconnect();
       if (timer !== undefined) clearTimeout(timer);
+      cancelAnimationFrame(read);
     };
-  }, [containerRef, fitView, minZoom]);
+  }, [containerRef, fitView, getZoom, minZoom, onFitted]);
 
   return null;
 }
