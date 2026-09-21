@@ -99,13 +99,22 @@ export function TreeFlow({
 
   const [zoomedIn, setZoomedIn] = useState(false);
   // The zoom the tree was last framed at — the baseline "zoomed in" compares to.
+  // It's taken from the first viewport update AFTER a fit rather than read back
+  // straight after calling fitView, which can still report the previous zoom.
   const fittedZoomRef = useRef<number | null>(null);
-  const handleFitted = useCallback((zoom: number) => {
-    fittedZoomRef.current = zoom;
+  const awaitingFitRef = useRef(true);
+  const handleFitted = useCallback(() => {
+    awaitingFitRef.current = true;
     setZoomedIn(false);
   }, []);
   // Typed loosely on purpose: `unknown` accepts whatever event React Flow passes.
   const handleMove = useCallback((_event: unknown, viewport: { zoom: number }) => {
+    if (awaitingFitRef.current) {
+      awaitingFitRef.current = false;
+      fittedZoomRef.current = viewport.zoom;
+      setZoomedIn(false);
+      return;
+    }
     const fitted = fittedZoomRef.current;
     setZoomedIn(fitted !== null && viewport.zoom > fitted * ZOOMED_IN_RATIO);
   }, []);
@@ -176,26 +185,21 @@ function AutoFit({
   count: number;
   minZoom: number;
   containerRef: RefObject<HTMLDivElement>;
-  /** Reports the zoom the tree was framed at, so "zoomed in" has a baseline. */
-  onFitted: (zoom: number) => void;
+  /** Says the tree was just re-framed, so the next viewport update is the
+      new baseline for "has the user zoomed in?". */
+  onFitted: () => void;
 }) {
-  const { fitView, getZoom } = useReactFlow();
+  const { fitView } = useReactFlow();
 
   useEffect(() => {
-    let read = 0;
     // Wait one frame so the new nodes are laid out before fitting.
     const raf = requestAnimationFrame(() => {
+      onFitted();
       // duration 0 = instant snap (crisp on E-Ink, no ghosting).
       void fitView({ padding: FIT_PADDING, duration: 0, minZoom });
-      // Read the resulting zoom a frame later rather than assuming fitView
-      // applied synchronously.
-      read = requestAnimationFrame(() => onFitted(getZoom()));
     });
-    return () => {
-      cancelAnimationFrame(raf);
-      cancelAnimationFrame(read);
-    };
-  }, [count, fitView, getZoom, minZoom, onFitted]);
+    return () => cancelAnimationFrame(raf);
+  }, [count, fitView, minZoom, onFitted]);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -210,7 +214,6 @@ function AutoFit({
     let latestW = fittedW;
     let latestH = fittedH;
     let timer: ReturnType<typeof setTimeout> | undefined;
-    let read = 0;
 
     const observer = new ResizeObserver((entries) => {
       const entry = entries[entries.length - 1];
@@ -231,8 +234,8 @@ function AutoFit({
         if (latestW < 1 || latestH < 1) return;
         fittedW = latestW;
         fittedH = latestH;
+        onFitted();
         void fitView({ padding: FIT_PADDING, duration: 0, minZoom });
-        read = requestAnimationFrame(() => onFitted(getZoom()));
       }, RESIZE_DEBOUNCE_MS);
     });
 
@@ -240,9 +243,8 @@ function AutoFit({
     return () => {
       observer.disconnect();
       if (timer !== undefined) clearTimeout(timer);
-      cancelAnimationFrame(read);
     };
-  }, [containerRef, fitView, getZoom, minZoom, onFitted]);
+  }, [containerRef, fitView, minZoom, onFitted]);
 
   return null;
 }
