@@ -1,6 +1,6 @@
 // Canonical SoCal GU oncology centers + fuzzy resolution helpers.
-// Only Cedars-Sinai and UC San Diego have trials so far (from their lists);
-// the others show none until their lists are added to curatedData.ts.
+// Only Cedars-Sinai, UC San Diego and USC have trials so far (from their
+// lists); the others show none until their lists are added to curatedData.ts.
 // The AI parser returns a free-text institution name; we normalize it to a slug.
 
 export type CenterDef = {

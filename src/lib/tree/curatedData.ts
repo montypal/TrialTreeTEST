@@ -10,24 +10,26 @@
 //   • UC San Diego "GU Clinical Trials List", updated 4 Sep 2026
 //     (identified as UCSD by its @health.ucsd.edu contacts and its
 //     Hillcrest / La Jolla campuses; the PDF itself doesn't name the site)
+//   • USC "GU & Urology Clinical Trials – Open to Accrual", 8 Sep 2026
+//     (identified as USC by its @med.usc.edu contacts)
 //
-// A trial open at both centers is ONE trial with two sites (7 such overlaps,
-// confirmed against ClinicalTrials.gov protocol IDs where not identical).
+// A trial open at more than one centre is ONE trial with several sites
+// (confirmed against ClinicalTrials.gov protocol IDs where not identical).
 //
 // Placement:
 //   • Kidney follows the clinician's whiteboard tree exactly
 //     (Stage → Histology → Line; only Clear cell carries therapy lines).
-//   • Prostate and Bladder use each list's own section headers as one level,
+//   • Prostate and Bladder use the lists' own section headers as one level,
 //     pending the clinician's whiteboard trees for those cancers.
-//   • A few UCSD rows sit under a section that doesn't match the trial's own
+//   • A few rows sit under a section that doesn't match the trial's own
 //     title; those were placed by the title and are marked "placement:" below.
 //
-// PIs are surnames only, exactly as the lists give them. Coordinator emails
-// and phone numbers from the UCSD list are deliberately NOT stored — this
-// site is public and has no login.
+// PIs are surnames only, exactly as the lists give them. Coordinator names,
+// emails and phone numbers are deliberately NOT stored — this site is public
+// and has no login.
 // ---------------------------------------------------------------------------
 
-export type CenterSlug = 'cedars-sinai' | 'ucsd';
+export type CenterSlug = 'cedars-sinai' | 'ucsd' | 'usc';
 
 export type CuratedSite = {
   center: CenterSlug;
@@ -69,8 +71,22 @@ const ucsd = (irb: string, pi: string, notes?: string, slotsOpen?: number): Cura
   slotsOpen,
 });
 
+/** USC rows carry a study number and optional operational notes. */
+const usc = (studyNo: string, pi: string | null, notes?: string): CuratedSite => ({
+  center: 'usc',
+  pi,
+  notes: [`Study ${studyNo}`, notes].filter(Boolean).join('. '),
+});
+
 const OPEN_HILLCREST = 'Open at Hillcrest';
 const COORDINATOR_TBD = 'Coordinator TBD — contact the project manager';
+/** USC marks some studies as also open at LA General (their county partner). */
+const ALSO_LAG = 'Also open at LA General (LAG)';
+/**
+ * Two USC rows (4P-25-4 and AGCT1532) print the PI as a bare "D" — an initial,
+ * not a surname. Recorded as unnamed rather than guessed at.
+ */
+const USC_PI_INITIAL = 'PI given only as "D" on the USC list';
 
 // ─── PROSTATE ──────────────────────────────────────────────────────────────
 const PROSTATE: CuratedNode = {
@@ -154,6 +170,16 @@ const PROSTATE: CuratedNode = {
           phase: 'Phase 3',
           sites: [ucsd('812443', 'McKay')],
         },
+        {
+          title:
+            'PRIMER: A Novel MRI-based Machine Learning Approach vs Radiologist MRI Reading for Targeted Prostate Biopsy — A Non-Inferiority, Within-Person Randomized Controlled Trial for Prostate Cancer Detection',
+          shorthand: 'PRIMER',
+          phase: 'Randomized controlled trial',
+          setting: 'Suspected or localized prostate cancer — diagnostic',
+          summary:
+            'Within-person randomized trial comparing machine-learning reading of prostate MRI against radiologist reading to target biopsies. The biopsy cohort must be biopsy-naive with no prior prostate cancer; the prostatectomy cohort excludes neoadjuvant hormonal therapy. 3T multiparametric MRI is required.',
+          sites: [usc('4P-25-1', 'Abreu')],
+        },
       ],
     },
     {
@@ -203,7 +229,7 @@ const PROSTATE: CuratedNode = {
           setting: 'No prior treatment / first hormonal maneuver',
           summary:
             'Phase III study testing whether treatment of the primary prostate tumor with surgery or radiation, in addition to standard systemic therapy, improves outcomes in newly diagnosed metastatic prostate cancer.',
-          sites: [cedars('Posadas'), ucsd('181866', 'Bagrodia')],
+          sites: [cedars('Posadas'), ucsd('181866', 'Bagrodia'), usc('S1802', 'Daneshmand', ALSO_LAG)],
         },
         {
           title:
@@ -225,7 +251,7 @@ const PROSTATE: CuratedNode = {
           setting: 'On ADT + ARPI with PSA that does not decline below 0.2 ng/mL',
           summary:
             'Phase III study testing whether the addition of docetaxel improves outcomes in men with metastatic castration-sensitive prostate cancer who fail to achieve an optimal PSA response (i.e. PSA <0.2 ng/mL) to initial ADT plus ARPI therapy.',
-          sites: [cedars('Posadas')],
+          sites: [cedars('Posadas'), usc('CCTG-PR26', 'Pinski', ALSO_LAG)],
         },
         {
           title:
@@ -343,7 +369,7 @@ const PROSTATE: CuratedNode = {
           shorthand: 'KLK2-PASenger',
           protocol: '78278343PCR3003',
           phase: 'Phase 3',
-          sites: [ucsd('813463', 'McKay')],
+          sites: [ucsd('813463', 'McKay'), usc('4P-25-4', null, `${USC_PI_INITIAL}. ${ALSO_LAG}`)],
         },
         {
           title:
@@ -358,6 +384,34 @@ const PROSTATE: CuratedNode = {
           shorthand: 'JANX014',
           phase: 'Phase 1',
           sites: [ucsd('814780', 'McKay')],
+        },
+        {
+          title:
+            'PSMA-007-001 (JANX007): Open-Label, Multicenter Study of JANX007 in Subjects with Metastatic Castration-Resistant Prostate Cancer',
+          shorthand: 'JANX007',
+          protocol: 'PSMA-007-001',
+          phase: 'Phase 1',
+          setting: 'Post-taxane, or taxane unsuitable or refused',
+          summary:
+            'Progressive mCRPC after novel anti-androgen therapy and taxane exposure, or when taxane is unsuitable or refused. Requires at least one novel anti-androgen and at least one failed taxane unless medically unsuitable or actively refusing taxane; progression by PCWG3 and/or RECIST 1.1.',
+          sites: [
+            usc(
+              '4P-25-2',
+              'Pinski',
+              'Only participating in Parts 3 and 4. Slot assignment must be requested from the sponsor before the patient signs consent',
+            ),
+          ],
+        },
+        {
+          title:
+            'NCI 10487: A Phase II Study of Lutetium Lu 177 Dotatate in Metastatic Prostate Cancer with Neuroendocrine Differentiation',
+          shorthand: 'NCI 10487',
+          protocol: 'NCI 10487',
+          phase: 'Phase 2',
+          setting: 'Neuroendocrine differentiation',
+          summary:
+            'Progressive metastatic prostate cancer with neuroendocrine histologic, molecular, clinical, or biochemical features. Requires at least one 68Ga-DOTATATE-positive lesion; bone-only disease is allowed; prior cytotoxic chemotherapy is allowed but not required; ongoing castration unless the histology is pure neuroendocrine.',
+          sites: [usc('4P-23-6', 'Pinski')],
         },
       ],
     },
@@ -391,6 +445,96 @@ const BLADDER: CuratedNode = {
           shorthand: 'QUILT-2.005',
           sites: [ucsd('810939', 'Salmasi', OPEN_HILLCREST)],
         },
+        {
+          title:
+            'NRG-GU014 (PARRC): Randomized Phase II Trial of Pembrolizumab and Radiation vs. Radiation and Concurrent Chemotherapy for High-Grade T1 Bladder Cancer',
+          shorthand: 'PARRC',
+          protocol: 'NRG-GU014',
+          phase: 'Phase 2',
+          setting: 'Very high-risk NMIBC',
+          summary:
+            'High-grade T1 N0 M0 disease with recurrent, persistent, or adverse pathologic features, ordinarily warranting a cystectomy recommendation. Focal CIS is allowed; diffuse CIS is excluded.',
+          sites: [usc('NRG-GU014', 'Lukas', ALSO_LAG)],
+        },
+        {
+          title:
+            'ABLE-22: Intravesical Nadofaragene Firadenovec Alone or With Chemotherapy (Gemcitabine and Docetaxel) or Immunotherapy (Pembrolizumab) in High-grade BCG-Unresponsive Non-muscle Invasive Bladder Cancer',
+          shorthand: 'ABLE-22',
+          phase: 'Phase 3',
+          setting: 'BCG-unresponsive NMIBC',
+          summary:
+            'BCG-unresponsive NMIBC with CIS, with or without high-grade Ta/T1. Adequate prior BCG is required and the patient elects not to undergo cystectomy.',
+          sites: [usc('4B-25-3', 'Daneshmand')],
+        },
+        {
+          title:
+            'CRETO EAP: Expanded Access Program of Cretostimogene Grenadenorepvec in High-Risk Non-Muscle Invasive Bladder Cancer Unresponsive to Bacillus Calmette-Guerin',
+          shorthand: 'CRETO EAP',
+          phase: 'Expanded access',
+          setting: 'BCG-unresponsive NMIBC',
+          summary:
+            'BCG-unresponsive NMIBC with CIS, with or without high-grade Ta/T1. Adequate prior BCG is required and the patient refuses cystectomy or is medically unfit for it.',
+          sites: [usc('4B-25-5', 'Schuckman', ALSO_LAG)],
+        },
+        {
+          title:
+            'EG-70-101: EG-70 as an Intravesical Administration to Patients with BCG-Unresponsive NMIBC and High-Risk NMIBC Patients who are BCG Naive or Received Incomplete BCG Treatment — A Master Protocol for EG-70 in Urothelial Cancers',
+          shorthand: 'EG-70-101',
+          phase: 'Phase 1/2',
+          setting: 'High-risk NMIBC — cohort-specific BCG settings',
+          summary:
+            'High-risk NMIBC with CIS with or without Ta/T1; a separate papillary high-grade Ta/T1 cohort is included. Eligibility depends on the cohort (BCG-naive, BCG-exposed, or BCG-unresponsive), and cystectomy refusal or ineligibility applies in selected cohorts.',
+          sites: [usc('4B-22-2', 'Schuckman')],
+        },
+        {
+          title:
+            'CORE-008: Multi-arm, Multi-cohort, Open-label Study of Cretostimogene Grenadenorepvec in Participants with High-risk Non-muscle-invasive Bladder Cancer',
+          shorthand: 'CORE-008',
+          phase: 'Phase 2',
+          setting: 'High-risk NMIBC — cohort-specific BCG settings',
+          summary:
+            'High-risk NMIBC with CIS with or without Ta/T1, or papillary high-grade Ta/T1. Eligibility and cystectomy requirements are cohort-specific across BCG-naive, BCG-exposed, and BCG-unresponsive populations.',
+          sites: [usc('4B-24-4', 'Daneshmand')],
+        },
+        {
+          title:
+            'INTerpath-011: Open-label Randomized Study of V940 in Combination With BCG Versus BCG Monotherapy in Participants With High-risk Non-muscle Invasive Bladder Cancer',
+          shorthand: 'INTerpath-011',
+          phase: 'Phase 2',
+          setting: 'BCG-naive high-risk NMIBC',
+          summary:
+            'BCG-naive high-risk NMIBC: T1, large or multifocal high-grade Ta, or CIS with or without papillary disease. The main cohort is BCG-naive; CIS is not required and cystectomy is not the central matching criterion.',
+          sites: [usc('4B-25-1', 'Aron')],
+        },
+        {
+          title:
+            'rBCG EAP (ResQ132EX-NMIBC): Expanded Access Use of Recombinant Bacillus Calmette-Guerin in Nonmuscle Invasive Bladder Cancer',
+          shorthand: 'rBCG EAP',
+          phase: 'Expanded access',
+          setting: 'NMIBC access study',
+          summary:
+            'Broad NMIBC population seeking BCG access, including BCG-naive patients when TICE BCG is unavailable. Exact Ta/T1/CIS risk criteria are not specified on the source list.',
+          sites: [usc('4B-25-6', 'Daneshmand', ALSO_LAG)],
+        },
+        {
+          title: 'Blue Light Cystoscopy with Cysview (BLC with Cysview) Registry',
+          shorthand: 'BLC with Cysview',
+          phase: 'Registry',
+          setting: 'NMIBC diagnosis and surveillance',
+          summary:
+            'Suspected or known NMIBC in diagnostic or surveillance care; CIS, Ta, and T1 may be represented. BCG exposure and cystectomy status are not defining criteria.',
+          sites: [usc('4B-13-1', 'Daneshmand')],
+        },
+        {
+          title:
+            'Nova-sTAR: Multicenter, Prospective, Longitudinal Study to Assess Real-world Use and Outcomes After the Launch of TAR-200 for NMIBC in the US',
+          shorthand: 'Nova-sTAR',
+          phase: 'Real-world prospective',
+          setting: 'NMIBC after TAR-200 initiation',
+          summary:
+            'Real-world NMIBC after TAR-200 initiation; Ta, T1, or CIS may be represented. Prior BCG exposure is broad and is collected as a variable rather than used as a protocol-defined stage category.',
+          sites: [usc('4B-26-1', 'Daneshmand')],
+        },
       ],
     },
     {
@@ -417,7 +561,7 @@ const BLADDER: CuratedNode = {
           setting: 'After neoadjuvant chemotherapy with good response',
           summary:
             'Phase II study testing pembrolizumab plus radiation as a bladder-sparing strategy for patients with muscle-invasive bladder cancer who achieve a clinical response after neoadjuvant therapy.',
-          sites: [cedars('Ballas')],
+          sites: [cedars('Ballas'), usc('S2427', 'Daneshmand')],
         },
         {
           title: 'NRG-GU015 (ARCHER): 5 vs 20 fractions of radiation',
@@ -456,6 +600,17 @@ const BLADDER: CuratedNode = {
           protocol: 'EA8192',
           phase: 'Phase 2/3',
           sites: [ucsd('812150', 'Bagrodia', `Open cohorts: Arms A and B. ${OPEN_HILLCREST}`)],
+        },
+        {
+          title:
+            'TYR300-203 (SURF303): Multi-center, Open-Label Study Evaluating the Efficacy and Safety of Dabogratinib (TYRA-300) in Participants with Low Grade Upper Tract Urothelial Carcinoma',
+          shorthand: 'SURF303',
+          protocol: 'TYR300-203',
+          phase: 'Phase 2A/B',
+          setting: 'Low-grade UTUC',
+          summary:
+            'Adults with biopsy-confirmed low-grade upper tract urothelial carcinoma and at least one measurable papillary tumor. After biopsy at least one marker lesion must remain with diameter ≥5 mm, or multiple lesions with aggregate size ≥5 mm. FGFR3 status is not required for enrollment; ECOG 0–2, pure urothelial histology, and adequate marrow, hepatic, and renal function are required. Excludes high-grade UTUC, CIS, prostatic urethral involvement, muscle-invasive or node-positive/metastatic bladder cancer, and prior FGFR inhibitor; protocol-defined washouts apply for BCG, intravesical/systemic therapy, immunotherapy, and investigational agents.',
+          sites: [usc('4B-26-2', 'Daneshmand', ALSO_LAG)],
         },
       ],
     },
@@ -509,6 +664,24 @@ const KIDNEY: CuratedNode = {
       label: 'Non-metastatic',
       kind: 'DISEASE_STATE',
       tag: 'Stage',
+      // placement: this one sits on the stage node rather than under a
+      // histology child. It images an INDETERMINATE renal mass to tell clear
+      // cell from not, so the histology branch is exactly what is unknown when
+      // a patient is referred to it. The whiteboard's Stage → Histology → Line
+      // structure is otherwise untouched.
+      trials: [
+        {
+          title:
+            '89Zr-TLX250-007: Expanded Access Program for the Non-invasive Detection of Clear Cell Renal Cell Carcinoma in Patients with Renal Masses Utilizing 89Zirconium-labelled Girentuximab (89Zr-DFO-girentuximab)',
+          shorthand: 'Girentuximab PET EAP',
+          protocol: '89Zr-TLX250-007',
+          phase: 'Expanded access',
+          setting: 'Indeterminate renal mass / suspected localized clear-cell RCC',
+          summary:
+            'A single indeterminate renal mass ≤7 cm, corresponding to clinical T1, with recent CT or MRI. No pathology is required before enrollment; selected patients with prior RCC or suspected metastases may enroll if the qualifying mass is present. GFR >40 mL/min/1.73 m².',
+          sites: [usc('4K-24-1', 'Conti')],
+        },
+      ],
       children: [
         {
           label: 'Clear cell',
@@ -531,7 +704,7 @@ const KIDNEY: CuratedNode = {
                   phase: 'Phase 3',
                   summary:
                     'Phase III study testing whether short-term VEGFR inhibition with tivozanib enhances the efficacy of adjuvant pembrolizumab in patients with high-risk resected clear-cell renal cell carcinoma.',
-                  sites: [cedars('Posadas'), ucsd('812777', 'McKay')],
+                  sites: [cedars('Posadas'), ucsd('812777', 'McKay'), usc('A032201', 'Tulpule', ALSO_LAG)],
                 },
               ],
             },
@@ -566,7 +739,7 @@ const KIDNEY: CuratedNode = {
                   setting: 'Progressed after adjuvant pembrolizumab',
                   summary:
                     'Phase III study evaluating belzutifan plus zanzalintinib (XL092, a multi-targeted TKI) versus cabozantinib in patients with recurrent clear-cell RCC after prior adjuvant PD-1/PD-L1 therapy.',
-                  sites: [cedars('Posadas')],
+                  sites: [cedars('Posadas'), usc('4K-26-1', 'Sadeghi')],
                 },
                 {
                   title: 'S1931 (PROBE): immunotherapy ± nephrectomy',
@@ -577,7 +750,7 @@ const KIDNEY: CuratedNode = {
                   setting: 'First-line therapy with kidney in place — surgical candidates',
                   summary:
                     'Phase III trial evaluating cytoreductive nephrectomy plus immunotherapy-based systemic therapy versus immunotherapy-based systemic therapy alone in metastatic renal cell carcinoma.',
-                  sites: [cedars('Kim')],
+                  sites: [cedars('Kim'), usc('S1931', 'Tulpule', ALSO_LAG)],
                 },
                 {
                   title: 'NRG-GU012 (SAMURAI): immunotherapy ± radiation',
@@ -616,6 +789,17 @@ const KIDNEY: CuratedNode = {
                   protocol: 'HCRN GU22-595',
                   phase: 'Phase 2',
                   sites: [ucsd('812235', 'McKay')],
+                },
+                {
+                  title:
+                    'S2419 (BIOFRONT): Double-Blinded Trial of Immune-Based Therapy with a Live Biotherapeutic MO-03 or Placebo for Frontline Therapy of Advanced Clear Cell Renal Cell Carcinoma',
+                  shorthand: 'BIOFRONT',
+                  protocol: 'S2419',
+                  phase: 'Phase 3',
+                  setting: 'Frontline advanced or metastatic clear-cell RCC',
+                  summary:
+                    'Advanced or metastatic RCC with a clear-cell component, not amenable to curative surgery or radiation. No prior systemic therapy for advanced/metastatic disease and no prior immune-based combination therapy; prior neoadjuvant/adjuvant checkpoint therapy is allowed if more than 12 months before registration. RECIST 1.1 measurable or evaluable disease is required (bone-only or pleural-effusion-only disease is allowed); Zubrod 0–2. The patient must be eligible for an allowed first-line IO-IO or IO-TKI regimen, and IMDC favorable-risk patients must receive an IO-TKI regimen. No systemic antibiotics within 7 days before registration and no over-the-counter probiotic supplements during protocol treatment.',
+                  sites: [usc('S2419', 'Sadeghi')],
                 },
               ],
             },
@@ -707,6 +891,17 @@ const OTHER_GU: CuratedNode = {
           phase: 'Registry',
           sites: [ucsd('170302', 'McKay', `PCCTC study. ${OPEN_HILLCREST}`)],
         },
+        {
+          // placement: an observational cohort that deliberately spans mCSPC
+          // and mCRPC, so it belongs to neither prostate state node.
+          title: 'LAPCC: Longitudinal Advanced Prostate Cancer Cohort',
+          shorthand: 'LAPCC',
+          phase: 'Observational cohort',
+          setting: 'Broad metastatic prostate cancer',
+          summary:
+            'Metastatic prostate cancer including both mCSPC and mCRPC. Any treatment history; no specific PSA, molecular, or line-of-therapy restriction; participation in other trials is allowed.',
+          sites: [usc('4P-22-2', 'Goldkorn', ALSO_LAG)],
+        },
       ],
     },
     {
@@ -736,6 +931,30 @@ const OTHER_GU: CuratedNode = {
           protocol: 'AGCT-1531',
           phase: 'Phase 3',
           sites: [ucsd('807305', 'Bagrodia', COORDINATOR_TBD)],
+        },
+        {
+          // NOT the same trial as AGCT-1531 above: 1531 randomizes carboplatin
+          // vs cisplatin in standard-risk disease, 1532 tests accelerated vs
+          // standard BEP in intermediate/poor-risk disease. Keep them separate.
+          title:
+            'AGCT1532 (P3BEP): Randomised Trial of Accelerated Versus Standard BEP Chemotherapy for Patients with Intermediate and Poor-risk Metastatic Germ Cell Tumours',
+          shorthand: 'P3BEP',
+          protocol: 'AGCT1532',
+          phase: 'Phase 3',
+          setting: 'Newly diagnosed metastatic germ cell tumors',
+          summary:
+            'Intermediate- or poor-risk metastatic germ cell tumor requiring first-line chemotherapy. Age 11–50; IGCCC intermediate or poor risk; seminoma or nonseminoma of the testis, retroperitoneum, or mediastinum; also stage IV malignant ovarian germ cell tumor.',
+          sites: [usc('AGCT1532', null, `${USC_PI_INITIAL}. ${ALSO_LAG}`)],
+        },
+        {
+          title:
+            'MAGESTIC: Phase II Trial of Serum Micro RNA-371 in Detecting Active Germ Cell Tumors in Patients with Suspected Regional Disease',
+          shorthand: 'MAGESTIC',
+          phase: 'Phase 2',
+          setting: 'Early-stage or low-volume regional testicular germ cell tumors',
+          summary:
+            'Post-orchiectomy clinical stage I, stage I with isolated retroperitoneal relapse, or stage IIA/IIB with limited retroperitoneal nodes. Testicular seminoma or NSGCT; age 18+; AFP <50 ng/mL; beta-hCG <25 mIU/mL; no node >3 cm and no more than 2 enlarged retroperitoneal nodes.',
+          sites: [usc('4T-22-2', 'Daneshmand')],
         },
         {
           title:
