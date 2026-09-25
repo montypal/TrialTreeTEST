@@ -150,7 +150,12 @@ export function TreeFlow({
           preventScrolling={!kiosk}
         >
           <Background gap={kiosk ? 30 : 22} size={1.4} color="#d4dce7" />
-          {!kiosk && <Controls showInteractive={false} style={CONTROLS_STYLE} />}
+          {/* The fit button must frame the tree exactly like the automatic fit
+              (same padding), or it lands slightly zoomed-in and a touch screen
+              would stay unlocked for panning after tapping it. */}
+          {!kiosk && (
+            <Controls showInteractive={false} style={CONTROLS_STYLE} fitViewOptions={fitViewOptions} />
+          )}
           {/* Re-frame the whole tree whenever its structure changes — a live
               update on a kiosk, or a toggle/filter change on admin — or the
               canvas is resized, so it never drifts off-screen. Keyed on node
