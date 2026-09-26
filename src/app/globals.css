@@ -115,6 +115,15 @@ html {
   background-clip: text;
   color: transparent;
 }
+/* Windows High Contrast strips the gradient but keeps `transparent`, which
+   would leave the heading invisible. */
+@media (forced-colors: active) {
+  .text-gradient {
+    background: none;
+    color: CanvasText;
+    -webkit-text-fill-color: CanvasText;
+  }
+}
 
 /* Animated decision-tree backdrop (welcome screen).
    Branch lines draw themselves in, nodes gently breathe, and glowing
@@ -190,19 +199,50 @@ html {
   animation: slide-in-right 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-/* React Flow nodes get a subtle hover lift for interactivity.
-   The lift only applies on devices that can truly hover — on touch screens
-   :hover sticks after a tap and would leave the node stuck "lifted". */
-.react-flow__node {
+/* Tree cards get a subtle hover lift for interactivity.
+   The lift is applied to the CARD, not to .react-flow__node: React Flow writes
+   the node's transform inline to position it, so a transform in this stylesheet
+   would simply never win. It only applies on devices that can truly hover — on
+   touch screens :hover sticks after a tap and would leave a card stuck lifted. */
+/* Only a card that IS a choice looks like one. The pinned "Viewing" card and
+   the kiosk's cards render a <div> rather than a <button>; giving them a pointer
+   and a lift made a non-choice look clickable. */
+.react-flow__node button.tt-card {
   cursor: pointer;
+}
+.tt-card {
   transition: transform 0.16s ease, filter 0.16s ease;
 }
 @media (hover: hover) {
-  .react-flow__node:hover {
+  .react-flow__node:hover button.tt-card {
     transform: translateY(-2px);
     filter: drop-shadow(0 10px 18px rgba(37, 99, 235, 0.16));
-    z-index: 10;
   }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tt-card {
+    transition: none;
+  }
+}
+/* Keep a focused card's ring inside its own box. The canvas clips at its edge,
+   so a ring drawn outside the card would be cut in half on the outermost ones. */
+.tt-card:focus-visible {
+  outline-offset: -3px;
+  border-radius: 0.75rem;
+}
+
+/* Edges anchor to the card's own edge. The default handle dots would be
+   specks of noise on a grid of cards, and nothing on this canvas is
+   connectable by hand, so they carry no meaning. */
+.react-flow__handle {
+  width: 1px;
+  height: 1px;
+  min-width: 0;
+  min-height: 0;
+  border: 0;
+  background: transparent;
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* React Flow theming — smooth, even diagonal gradient canvas (no patches) */
@@ -217,35 +257,11 @@ html {
 .react-flow__attribution {
   display: none;
 }
-/* Canvas zoom / fit controls — rounded card with on-brand hover */
-.react-flow__controls {
-  border-radius: 12px;
-  overflow: hidden;
-  border: 1px solid #e6ebf2;
-  box-shadow: 0 6px 20px -8px rgba(15, 23, 42, 0.18);
-}
-.react-flow__controls-button {
-  background: #ffffff;
-  border-bottom: 1px solid #eef2f7;
-  color: #475569;
-  width: 30px;
-  height: 30px;
-  transition: background 0.15s ease, color 0.15s ease;
-}
-.react-flow__controls-button:hover {
-  background: #eff6ff;
-  color: #2563eb;
-}
-.react-flow__controls-button svg {
-  fill: currentColor;
-}
-/* Finger-sized zoom / fit buttons on touch screens (phones, iPads). */
-@media (pointer: coarse) {
-  .react-flow__controls-button {
-    width: 40px;
-    height: 40px;
-  }
-}
+/* The zoom / fit controls are NOT React Flow's floating <Controls> panel any
+   more. A level is now sized to fill the canvas, so anything floating over the
+   canvas sits on top of a card — the controls live in TreeFlow's own status
+   strip underneath it instead, where they can also be finger-sized without
+   covering anything. */
 
 /* Status pills shared by trial nodes and lists */
 .pill {
@@ -271,7 +287,7 @@ html {
 }
 .pill-CLOSED {
   background: #f1f5f9; /* slate-100 */
-  color: #64748b; /* slate-500 */
+  color: #475569; /* slate-600 — slate-500 is 4.34:1 on slate-100 at this size */
   border-color: #e2e8f0; /* slate-200 */
 }
 .pill-SUSPENDED {
@@ -293,11 +309,37 @@ html {
   background: #ffffff !important;
   color: #000000 !important;
 }
+/* The canvas paints its own tinted gradient, which an E-Ink panel renders as a
+   muddy grey wash behind every card — so it is flattened to white here. */
+.eink .react-flow {
+  background: #ffffff !important;
+}
 .eink .react-flow__edge-path {
   stroke: #000 !important;
+}
+.eink .tt-card {
+  background: #ffffff !important;
+  border-color: #000 !important;
+  box-shadow: none !important;
+  filter: none !important;
 }
 .eink .pill {
   border: 1.5px solid #000;
   background: #fff !important;
   color: #000 !important;
+}
+/* The tree cards' status pills and site dots are Tailwind-classed rather than
+   `.pill`, so the rule above never reached them — and `ring-*` is a box-shadow,
+   not a border. On a greyscale panel emerald-on-emerald is a smudge and the
+   per-site dots are three indistinguishable greys, so both are flattened. */
+.eink .tt-pill {
+  background: #fff !important;
+  color: #000 !important;
+  border: 1.5px solid #000 !important;
+  box-shadow: none !important;
+}
+.eink .tt-dot {
+  background: #000 !important;
+  border-color: #000 !important;
+  box-shadow: none !important;
 }

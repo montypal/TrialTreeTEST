@@ -70,11 +70,20 @@ model Trial {
   lastSyncedAt        DateTime? // last time the CT.gov importer touched this row
   // If a clinician edited criteria via text, the importer stops overwriting it.
   criteriaOverride    Boolean  @default(false)
+  // Plain-language summary for patients and caregivers. Every field is
+  // optional and summaryApproved starts false, so the curated loader (which
+  // deletes and recreates trials and never sets these) keeps working
+  // untouched, and nothing renders a summary a human has not signed off on.
+  summary             String?
+  summarySource       String? // CURATED | AI_GENERATED | CTGOV
+  summaryApproved     Boolean  @default(false)
+  summaryGeneratedAt  DateTime?
   // Which decision node this trial lives under.
   decisionNodeId      String
   decisionNode        DecisionNode    @relation(fields: [decisionNodeId], references: [id], onDelete: Cascade)
   locations           TrialLocation[]
   cohorts             Cohort[]
+  nctMatchCandidates  NctMatchCandidate[]
   createdAt           DateTime        @default(now())
   updatedAt           DateTime        @updatedAt
 
@@ -170,4 +179,149 @@ model ActionLog {
 
   @@index([status])
   @@index([createdAt])
+}
+
+// --- Public intake: submissions, suggestions, messages of support ----------
+// Everything below arrives from a public web form, so none of it is trusted
+// and none of it is published on arrival. Each row lands in a pending state
+// and only a human moves it forward.
+//
+// Three tables rather than one polymorphic "Inbox": the three flows have
+// genuinely different workflows (a trial submission gets transcribed into
+// curatedData.ts, a suggestion gets triaged, a donor message gets moderated
+// onto a public page) and separate tables let each grow columns without
+// migrating the others.
+
+enum SubmissionStatus {
+  PENDING // straight off the form, untouched
+  IN_REVIEW // a curator has picked it up
+  APPROVED // accepted — a curator transcribes it into the curated lists
+  REJECTED
+}
+
+model TrialSubmission {
+  id String @id @default(cuid())
+
+  // The trial itself. Only the title is required. A coordinator filling this
+  // in from a protocol binder often has no NCT number yet, and rejecting the
+  // submission over a missing field loses exactly the trials worth hearing
+  // about.
+  nctId          String?
+  title          String
+  protocolNumber String? // institutional protocol / IRB number
+  phase          String?
+  diseaseArea    String? // free text; a curator maps it onto the decision tree
+
+  // Where it runs. Deliberately free text instead of a Location relation:
+  // submissions come from centers we have not onboarded, and a foreign key
+  // would reject them at the door.
+  institution           String
+  institutionSite       String? // department, campus or site detail
+  principalInvestigator String?
+
+  // Who sent it. Contact details — every read of this table is a PII read.
+  submitterName  String
+  submitterEmail String
+  submitterPhone String?
+  submitterRole  String? // "Principal Investigator", "Study Coordinator", ...
+
+  notes String? // anything else the submitter wants the curator to know
+
+  // Review workflow. The decision, the note and the timestamp are separate
+  // columns rather than one status blob so both a future admin dashboard and
+  // a future automated NCT-lookup pipeline can read and write this row
+  // without a schema rewrite.
+  status      SubmissionStatus @default(PENDING)
+  reviewNotes String?
+  reviewedAt  DateTime?
+  createdAt   DateTime         @default(now())
+
+  @@index([status, createdAt])
+  @@index([nctId])
+}
+
+// --- Lightweight public feedback -------------------------------------------
+enum SuggestionKind {
+  MISSING_TRIAL
+  INCORRECT_INFO
+  GENERAL_FEEDBACK
+}
+
+enum SuggestionStatus {
+  NEW
+  TRIAGED
+  RESOLVED
+  DISMISSED
+}
+
+model Suggestion {
+  id           String         @id @default(cuid())
+  kind         SuggestionKind
+  nctId        String?
+  message      String
+  contactEmail String? // optional: a lot of useful corrections arrive anonymous
+
+  // The trial this is about, held as a bare id and NOT as a relation. The
+  // curated loader deletes and recreates every trial on each reload, so a
+  // real foreign key with cascade would throw away the very feedback the
+  // reload was supposed to act on. A dangling id is the lesser evil.
+  relatedTrialId String?
+
+  status    SuggestionStatus @default(NEW)
+  createdAt DateTime         @default(now())
+
+  @@index([status, createdAt])
+  @@index([relatedTrialId])
+}
+
+// --- Messages of support left alongside a donation -------------------------
+enum DonorMessageStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model DonorMessage {
+  id          String  @id @default(cuid())
+  displayName String
+  message     String?
+
+  // Unpublished until a human approves it. There is deliberately no
+  // publish-on-arrival path: this text renders on a public page under a
+  // person's name, so every public query must filter on status = APPROVED.
+  status     DonorMessageStatus @default(PENDING)
+  approvedAt DateTime?
+  createdAt  DateTime           @default(now())
+
+  @@index([status, createdAt])
+}
+
+// --- Proposed ClinicalTrials.gov matches, awaiting a human ------------------
+enum NctMatchStatus {
+  PROPOSED
+  CONFIRMED
+  REJECTED
+}
+
+model NctMatchCandidate {
+  id      String @id @default(cuid())
+  trialId String
+  trial   Trial  @relation(fields: [trialId], references: [id], onDelete: Cascade)
+
+  // A guess, never a fact. A matcher writes PROPOSED rows; a human confirms
+  // them; nothing downstream may treat an unconfirmed row as the trial's real
+  // NCT number. Note the cascade: a curated reload drops every trial, and
+  // these proposals go with it — which is correct, because the trial ids they
+  // point at no longer exist.
+  nctId          String
+  candidateTitle String
+  confidence     Int // 0-100, as scored by the matcher
+  evidence       Json? // what actually matched: title tokens, PI, site overlap
+
+  status     NctMatchStatus @default(PROPOSED)
+  reviewedAt DateTime?
+  createdAt  DateTime       @default(now())
+
+  @@unique([trialId, nctId])
+  @@index([status, confidence])
 }

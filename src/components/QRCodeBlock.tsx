@@ -15,8 +15,23 @@ type Props = {
  * update takes <5s: the clinician just appends the change and hits send.
  */
 export function QRCodeBlock({ locationSlug, smsNumber }: Props) {
-  const number = smsNumber || process.env.NEXT_PUBLIC_SMS_NUMBER || '+13105550100';
+  // No hard-coded fallback. There used to be one, and on a deploy without the
+  // env var a waiting-room screen displayed an invented phone number as the one
+  // clinicians should text. Unconfigured now says so instead.
+  const number = smsNumber || process.env.NEXT_PUBLIC_SMS_NUMBER || null;
   const label = locationLabel(locationSlug);
+
+  if (!number) {
+    return (
+      <div className="max-w-[240px] rounded-xl border-2 border-dashed border-slate-300 bg-white p-3 text-slate-700 shadow-xl sm:rounded-2xl sm:p-4">
+        <div className="text-sm font-extrabold leading-tight">Update number not configured</div>
+        <div className="mt-1 text-xs leading-snug text-slate-600">
+          Set NEXT_PUBLIC_SMS_NUMBER to show the scan-to-text code on this board.
+        </div>
+      </div>
+    );
+  }
+
   // sms: URI with prefilled body. `?&body=` maximizes cross-platform (iOS/Android) support.
   const body = `Update for ${label}: `;
   const href = `sms:${number}?&body=${encodeURIComponent(body)}`;

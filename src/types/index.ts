@@ -39,6 +39,16 @@ export interface TrialDTO {
   decisionNodeId: string;
   locations: TrialLocationDTO[];
   cohorts: CohortDTO[];
+  /** Where the record came from: CURATED (a center's own list), CTGOV (the
+      ClinicalTrials.gov importer) or MANUAL. Optional so older producers of
+      this shape keep compiling; absent means "not recorded". */
+  source?: string | null;
+  /** A plain-language summary, sent ONLY once a human has approved it — the
+      API withholds unapproved text, so its presence here means signed off. */
+  summary?: string | null;
+  summarySource?: string | null;
+  summaryApproved?: boolean;
+  summaryGeneratedAt?: string | null;
 }
 
 export interface TreeData {

@@ -14,8 +14,14 @@ const sora = Sora({
   display: 'swap',
 });
 
+// The template lets every page set a short title ("About", "Donate") and still
+// read as part of the site in a browser tab or a search result. `default`
+// covers the routes that don't export their own metadata.
 export const metadata: Metadata = {
-  title: 'TrialTree — GU Oncology Trial Map',
+  title: {
+    default: 'TrialTree — GU Oncology Trial Map',
+    template: '%s — TrialTree',
+  },
   description:
     'Real-time clinical decision-tree mapping for Genitourinary cancer trials across Southern California.',
 };

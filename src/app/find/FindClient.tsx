@@ -61,7 +61,7 @@ export function FindClient() {
         {/* Padding grows the tap target to 40px tall; the matching negative
             margins cancel it out so the header layout is unchanged. */}
         <Link
-          href="/admin"
+          href="/explore"
           className="-mx-2 -my-2.5 px-2 py-2.5 text-sm font-semibold text-blue-600 hover:underline"
         >
           Full tree →
@@ -182,7 +182,7 @@ export function FindClient() {
             {result.matches.length === 0 && (
               <div className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-500">
                 No clear matches in the current catalog. Try adding detail (biomarkers, prior lines),
-                or browse the <Link href="/admin" className="text-blue-600 hover:underline">full tree</Link>.
+                or browse the <Link href="/explore" className="text-blue-600 hover:underline">full tree</Link>.
               </div>
             )}
           </div>

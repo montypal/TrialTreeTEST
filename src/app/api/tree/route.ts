@@ -61,6 +61,14 @@ export async function GET(_req: NextRequest) {
         slotsOpen: l.slotsOpen,
       })),
       cohorts: t.cohorts.map((c) => ({ id: c.id, label: c.label, status: c.status })),
+      source: t.source,
+      // Unapproved summaries never leave the server. The schema cannot enforce
+      // the review gate on its own, so it is enforced here, at the one place
+      // trial text is handed to the public site.
+      summary: t.summaryApproved ? t.summary : null,
+      summarySource: t.summaryApproved ? t.summarySource : null,
+      summaryApproved: t.summaryApproved,
+      summaryGeneratedAt: t.summaryApproved && t.summaryGeneratedAt ? t.summaryGeneratedAt.toISOString() : null,
     })),
     principalInvestigators: [...piMap.values()].sort((a, b) => a.localeCompare(b)),
   };

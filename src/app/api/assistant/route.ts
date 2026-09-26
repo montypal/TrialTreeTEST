@@ -102,6 +102,14 @@ export async function POST(req: NextRequest) {
           slotsOpen: l.slotsOpen,
         })),
         cohorts: t.cohorts.map((c) => ({ id: c.id, label: c.label, status: c.status })),
+        // Same fields, same review gate as /api/tree — the detail panel reads
+        // provenance from `source`, and an unapproved summary never leaves the server.
+        source: t.source,
+        summary: t.summaryApproved ? t.summary : null,
+        summarySource: t.summaryApproved ? t.summarySource : null,
+        summaryApproved: t.summaryApproved,
+        summaryGeneratedAt:
+          t.summaryApproved && t.summaryGeneratedAt ? t.summaryGeneratedAt.toISOString() : null,
       };
       return { fit: m.fit, rationale: m.rationale, considerations: m.considerations, path: pathOf(t.decisionNodeId), trial };
     })

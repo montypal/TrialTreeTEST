@@ -16,6 +16,10 @@ type Props = {
   open: boolean;
   /** Close the drawer (backdrop tap, ✕ button, Escape). */
   onClose: () => void;
+  /** Curator shortcuts (review queue, NCT matches). Off on the public /explore
+      page: advertising a queue that can change live trial status to every
+      visitor is not the same as it merely being reachable by URL. */
+  showAdminLinks?: boolean;
 };
 
 /** From lg up the sidebar is always on screen — there's no drawer to close. */
@@ -44,7 +48,17 @@ function TreeMark() {
   );
 }
 
-export function Sidebar({ pis, diseases, filter, connected, lastSummary, onChange, open, onClose }: Props) {
+export function Sidebar({
+  pis,
+  diseases,
+  filter,
+  connected,
+  lastSummary,
+  onChange,
+  open,
+  onClose,
+  showAdminLinks = true,
+}: Props) {
   // Escape closes the drawer. Capture phase + preventDefault, so a trial panel
   // open underneath (which also closes on Escape) stays open on the same key.
   useEffect(() => {
@@ -214,17 +228,28 @@ export function Sidebar({ pis, diseases, filter, connected, lastSummary, onChang
         </div>
 
         <div className="mt-auto rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-500">
-          <div className="font-semibold uppercase tracking-wider text-slate-400">Last live update</div>
+          <div className="font-semibold uppercase tracking-wider text-slate-500">Last live update</div>
           <div className="mt-1 text-slate-700">{lastSummary ?? 'Waiting for changes…'}</div>
         </div>
 
-        <a
-          href="/admin/review"
-          className="group flex items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-3 text-center text-sm font-semibold text-slate-700 transition-all duration-150 hover:-translate-y-0.5 hover:border-slate-400 hover:bg-slate-50 hover:shadow-sm lg:py-2"
-        >
-          Review queue
-          <span className="transition-transform duration-200 group-hover:translate-x-0.5">→</span>
-        </a>
+        {showAdminLinks && (
+          <div className="flex flex-col gap-2">
+            <a
+              href="/admin/review"
+              className="group flex items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-3 text-center text-sm font-semibold text-slate-700 transition-all duration-150 hover:-translate-y-0.5 hover:border-slate-400 hover:bg-slate-50 hover:shadow-sm lg:py-2"
+            >
+              Review queue
+              <span aria-hidden className="transition-transform duration-200 group-hover:translate-x-0.5">→</span>
+            </a>
+            <a
+              href="/admin/matches"
+              className="group flex items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-3 text-center text-sm font-semibold text-slate-700 transition-all duration-150 hover:-translate-y-0.5 hover:border-slate-400 hover:bg-slate-50 hover:shadow-sm lg:py-2"
+            >
+              NCT matches
+              <span aria-hidden className="transition-transform duration-200 group-hover:translate-x-0.5">→</span>
+            </a>
+          </div>
+        )}
       </aside>
     </>
   );
