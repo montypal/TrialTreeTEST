@@ -12,6 +12,7 @@ import {
 import {
   ReactFlow,
   Background,
+  useNodesInitialized,
   useReactFlow,
   type Node,
   type NodeTypes,
@@ -289,6 +290,19 @@ function TreeCanvas({
     const raf = requestAnimationFrame(() => frameRef.current());
     return () => cancelAnimationFrame(raf);
   }, [shape]);
+
+  // <ReactFlow fitView> runs React Flow's own centring fit once, when the nodes
+  // are first measured — which can land AFTER the frame above. For a level that
+  // fits, the two agree. For one that overflows, the centring fit undid the
+  // top-pin and hid the first cards above the canvas; a deep link that opens
+  // straight onto a tall level (/explore?disease=…) hit exactly that. So frame
+  // again once the nodes are measured, and ours is always the last word.
+  const nodesInitialized = useNodesInitialized();
+  useEffect(() => {
+    if (!nodesInitialized) return;
+    const raf = requestAnimationFrame(() => frameRef.current());
+    return () => cancelAnimationFrame(raf);
+  }, [nodesInitialized]);
 
   return (
     <div className="flex h-full w-full flex-col">
