@@ -134,7 +134,7 @@ export default function AboutPage() {
       <PageHeader
         eyebrow="About"
         title="A clearer map of GU cancer trials in Southern California"
-        lead="TrialTree brings genitourinary cancer trials from participating Southern California cancer centers into one browsable map, so patients, caregivers, and clinicians can see what is open without reading six separate websites."
+        lead="TrialTree brings genitourinary cancer trials from participating Southern California cancer centers into one browsable map, so patients, caregivers, and clinicians can see what is open without checking each center's website separately."
       />
 
       <div className="mt-6 flex flex-wrap items-center gap-2">

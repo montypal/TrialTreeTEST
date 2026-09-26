@@ -291,12 +291,10 @@ function TreeCanvas({
     return () => cancelAnimationFrame(raf);
   }, [shape]);
 
-  // <ReactFlow fitView> runs React Flow's own centring fit once, when the nodes
-  // are first measured — which can land AFTER the frame above. For a level that
-  // fits, the two agree. For one that overflows, the centring fit undid the
-  // top-pin and hid the first cards above the canvas; a deep link that opens
-  // straight onto a tall level (/explore?disease=…) hit exactly that. So frame
-  // again once the nodes are measured, and ours is always the last word.
+  // fitView() frames the MEASURED node boxes, so a fit attempted before React
+  // Flow has measured a new level's nodes can do nothing. Framing again once
+  // they are measured closes that gap; with no `fitView` prop on <ReactFlow>
+  // there is no competing fit, so this and the effect above are the only two.
   const nodesInitialized = useNodesInitialized();
   useEffect(() => {
     if (!nodesInitialized) return;
@@ -313,7 +311,11 @@ function TreeCanvas({
           nodeTypes={nodeTypes}
           onNodeClick={onNodeClick}
           onPaneClick={onPaneClick}
-          fitView
+          // No `fitView` prop: React Flow's own first fit centres the graph, and
+          // it runs after node measurement — later than anything this component
+          // can schedule. On a level taller than the canvas that centring undid
+          // the top-pin and hid the first cards. Framing is owned entirely by
+          // `frame()` below; fitViewOptions still configures the zoom controls.
           fitViewOptions={fitViewOptions}
           minZoom={minZoom}
           maxZoom={2}
