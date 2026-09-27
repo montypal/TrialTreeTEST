@@ -45,7 +45,7 @@ const CATEGORIES: Category[] = [
   {
     rootLabel: 'Other GU Trials',
     title: 'Other GU',
-    blurb: 'Germ cell tumors, registries and cross-disease studies.',
+    blurb: 'Adrenal, testicular germ cell, registries and cross-disease studies.',
     icon: 'other',
   },
 ];

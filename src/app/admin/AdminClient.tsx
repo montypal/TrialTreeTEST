@@ -13,6 +13,7 @@ import { useTreeStream } from '@/components/useTreeStream';
 import { MORE_NODE_TYPE } from '@/lib/tree/buildTree';
 import type { TreeFilter, TrialDTO } from '@/types';
 import { CANCERS, CARD, DOT, hueFor } from '@/lib/cancerColors';
+import { OrganIcon, organFor } from '@/components/icons/OrganIcon';
 
 // The browse experience behind both /explore (public) and /admin (legacy URL).
 //
@@ -24,6 +25,39 @@ import { CANCERS, CARD, DOT, hueFor } from '@/lib/cancerColors';
 //    an honest number, which matters because the tree is laid out against it.
 //  • Phones and tablets get the sidebar as an off-canvas filter drawer; from lg
 //    up it is static, as before.
+
+/**
+ * Where the reader is: on the welcome chooser, or inside a tree at a node.
+ *
+ * Every move is recorded as a browser history entry, so the browser's Back
+ * button steps back through the moves and, from the top, returns to the welcome
+ * screen — instead of leaving the site, which is what a single-page view does
+ * when nothing is pushed. Only the entry's state is added to; the URL is left
+ * alone, so Next's router sees no navigation and nothing is re-fetched or
+ * remounted.
+ */
+type Nav = { entered: boolean; disease: string | null; focus: string | null };
+
+const NAV_KEY = 'trialTreeNav';
+
+/** Our slice of a history entry's state, if it has one. Defensive: history
+    state is shared with Next's router and survives reloads. */
+function readNav(state: unknown): Nav | null {
+  if (!state || typeof state !== 'object') return null;
+  const raw = (state as Record<string, unknown>)[NAV_KEY];
+  if (!raw || typeof raw !== 'object') return null;
+  const v = raw as Record<string, unknown>;
+  return {
+    entered: v.entered === true,
+    disease: typeof v.disease === 'string' ? v.disease : null,
+    focus: typeof v.focus === 'string' ? v.focus : null,
+  };
+}
+
+function historyState(): Record<string, unknown> {
+  const st: unknown = window.history.state;
+  return st && typeof st === 'object' ? (st as Record<string, unknown>) : {};
+}
 
 type Props = {
   /** True when a parent route (that is, /explore) already owns the viewport
@@ -153,6 +187,52 @@ export function AdminClient({ embedded = false, initialDisease = null }: Props) 
     setShowAllTrials(false);
   }, []);
 
+  // Put the view at a place without recording it — for Back/Forward, and for
+  // restoring where the reader was after a reload.
+  const applyNav = useCallback((n: Nav) => {
+    setEntered(n.entered);
+    setFilter((f) => (f.diseaseLabel === n.disease ? f : { ...f, diseaseLabel: n.disease }));
+    setFocusId(n.focus);
+    setShowAllTrials(false);
+    setSelected(null);
+  }, []);
+
+  // Go somewhere and record it, so the browser's Back returns here.
+  const navigate = useCallback(
+    (n: Nav) => {
+      applyNav(n);
+      try {
+        window.history.pushState({ ...historyState(), [NAV_KEY]: n }, '');
+      } catch {
+        // History can be unavailable in unusual embeds; the move still happened.
+      }
+    },
+    [applyNav],
+  );
+
+  useEffect(() => {
+    // Returning to an entry we recorded (a reload keeps history state) puts the
+    // reader back where they were; a fresh entry is stamped with where they
+    // start, so Back from their first move lands on it.
+    try {
+      const existing = readNav(window.history.state);
+      if (existing) {
+        applyNav(existing);
+      } else {
+        const start: Nav = { entered: !!initialDisease, disease: initialDisease, focus: null };
+        window.history.replaceState({ ...historyState(), [NAV_KEY]: start }, '');
+      }
+    } catch {
+      // As above: without history the page still works, it just can't step back.
+    }
+    const onPop = (e: PopStateEvent) => {
+      const n = readNav(e.state);
+      if (n) applyNav(n);
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, [applyNav, initialDisease]);
+
   const onNodeClick = useCallback(
     (_e: MouseEvent, node: Node) => {
       if (node.type === 'trial') {
@@ -166,24 +246,22 @@ export function AdminClient({ embedded = false, initialDisease = null }: Props) 
         // so without this a click would quietly collapse "Show all" back to the
         // paged view.
         if ((node.data as { context?: boolean }).context) return;
-        setFocusId(node.id); // drill one level
-        setShowAllTrials(false);
-        setSelected(null);
+        navigate({ entered: true, disease: filter.diseaseLabel ?? null, focus: node.id });
       }
     },
-    [data],
+    [data, filter.diseaseLabel, navigate],
   );
 
-  const chooseCancer = (label: string | null) => {
-    setFilter((f) => ({ ...f, diseaseLabel: label }));
-    drillTo(null);
-    setEntered(true);
-  };
+  const chooseCancer = (label: string | null) => navigate({ entered: true, disease: label, focus: null });
 
-  // Jump to a breadcrumb step; the root crumb also clears the cancer choice.
+  // "Cancer types", the first step of every path, IS the welcome screen — so
+  // stepping back to it goes home, to the chooser, rather than to a second and
+  // plainer list of the same four cancers.
+  const goHome = () => navigate({ entered: false, disease: null, focus: null });
+
   const goToCrumb = (id: string | null) => {
-    if (id === null) setFilter((f) => ({ ...f, diseaseLabel: null }));
-    drillTo(id);
+    if (id === null) goHome();
+    else navigate({ entered: true, disease: filter.diseaseLabel ?? null, focus: id });
   };
 
   // While the "which cancer?" chooser covers the browse area, what is behind it
@@ -222,7 +300,11 @@ export function AdminClient({ embedded = false, initialDisease = null }: Props) 
         lastSummary={lastSummary}
         onChange={(f) => {
           setFilter(f);
-          drillTo(null);
+          if ((f.diseaseLabel ?? null) !== (filter.diseaseLabel ?? null)) {
+            navigate({ entered: true, disease: f.diseaseLabel ?? null, focus: null });
+          } else {
+            drillTo(null);
+          }
         }}
         open={sidebarOpen}
         onClose={closeSidebar}
@@ -348,29 +430,32 @@ export function AdminClient({ embedded = false, initialDisease = null }: Props) 
                   Runs through lg because an iPad in portrait is touch hardware
                   too, and the breadcrumb's crumbs are sized for a pointer. */}
               <div className="flex min-w-0 flex-1 items-center gap-2 lg:hidden">
-                {parentCrumb && (
-                  <button
-                    type="button"
-                    onClick={() => goToCrumb(parentCrumb.id)}
-                    aria-label={`Back to ${parentCrumb.label}`}
-                    className="inline-flex h-11 shrink-0 items-center gap-1 rounded-xl border border-slate-200 bg-white pl-2 pr-3 text-sm font-semibold text-slate-600 shadow-sm transition-all duration-200 hover:bg-blue-50 hover:text-blue-700 active:scale-95"
+                {/* Always present: from the top level it goes to the welcome screen. */}
+                <button
+                  type="button"
+                  onClick={() => (parentCrumb ? goToCrumb(parentCrumb.id) : goHome())}
+                  aria-label={
+                    parentCrumb && parentCrumb.id !== null
+                      ? `Back to ${parentCrumb.label}`
+                      : 'Back to the start screen'
+                  }
+                  className="inline-flex h-11 shrink-0 items-center gap-1 rounded-xl border border-slate-200 bg-white pl-2 pr-3 text-sm font-semibold text-slate-600 shadow-sm transition-all duration-200 hover:bg-blue-50 hover:text-blue-700 active:scale-95"
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden
                   >
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2.2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      aria-hidden
-                    >
-                      <path d="M15 18l-6-6 6-6" />
-                    </svg>
-                    Back
-                  </button>
-                )}
+                    <path d="M15 18l-6-6 6-6" />
+                  </svg>
+                  Back
+                </button>
                 <span className="min-w-0 truncate px-1 text-sm font-semibold text-slate-900">
                   {currentCrumb.label}
                 </span>
@@ -385,7 +470,34 @@ export function AdminClient({ embedded = false, initialDisease = null }: Props) 
                 {crumbs.map((c, i) => (
                   <span key={`${c.id ?? 'root'}-${i}`} className="flex items-center gap-1">
                     {i > 0 && <span className="text-slate-300">›</span>}
-                    {i < crumbs.length - 1 ? (
+                    {c.id === null ? (
+                      // The root crumb is always live, even when it is the
+                      // current step: it is the way back to the welcome screen.
+                      <button
+                        type="button"
+                        onClick={goHome}
+                        title="Back to the start screen"
+                        aria-current={i === crumbs.length - 1 ? 'step' : undefined}
+                        className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 font-semibold transition-colors hover:bg-blue-50 hover:text-blue-700 ${
+                          i === crumbs.length - 1 ? 'text-slate-900' : 'text-slate-500'
+                        }`}
+                      >
+                        <svg
+                          width="12"
+                          height="12"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          aria-hidden
+                        >
+                          <path d="M3 11l9-7 9 7M5 10v10h14V10" />
+                        </svg>
+                        {c.label}
+                      </button>
+                    ) : i < crumbs.length - 1 ? (
                       <button
                         type="button"
                         onClick={() => goToCrumb(c.id)}
@@ -488,11 +600,13 @@ export function AdminClient({ embedded = false, initialDisease = null }: Props) 
                       className={`group relative flex w-full items-center gap-4 overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br ${s.grad} p-4 text-left shadow-card transition-all duration-300 hover:-translate-y-1.5 ${s.hover} hover:shadow-lift lg:block lg:w-60 lg:p-6`}
                     >
                       <span className={`absolute inset-x-0 top-0 h-1 ${s.bar}`} />
+                      {/* The organ, drawn — not the cancer's initial. Decorative:
+                          the label beside it carries the name. */}
                       <span
-                        className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl font-display text-xl font-extrabold ${s.badge}`}
+                        className={`inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl ${s.badge} lg:h-16 lg:w-16`}
                         aria-hidden
                       >
-                        {d[0]}
+                        <OrganIcon name={organFor(d)} hue={hueFor(d)} className="h-11 w-11 lg:h-12 lg:w-12" />
                       </span>
                       <div className="min-w-0 flex-1">
                         <div className="font-display text-lg font-bold leading-tight text-slate-900 lg:mt-3">
