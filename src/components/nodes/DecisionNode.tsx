@@ -3,6 +3,7 @@
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import type { DecisionNodeData, Density } from '@/lib/tree/buildTree';
 import { NODE } from '@/lib/cancerColors';
+import { OrganIcon, organFor } from '@/components/icons/OrganIcon';
 
 // Fallback axis labels for nodes without a curated tag.
 const KIND_LABEL: Record<string, string> = {
@@ -14,7 +15,10 @@ const KIND_LABEL: Record<string, string> = {
 
 // Tailwind's JIT only sees class names written out in full, so the type scale
 // is a lookup of literal strings — same rule cancerColors.ts follows.
-const SCALE: Record<Density, { pad: string; tag: string; label: string; meta: string }> = {
+const SCALE: Record<
+  Density,
+  { pad: string; tag: string; label: string; meta: string; organTile: string; organIcon: string }
+> = {
   // Same 0.7rem floor as the trial cards for the counts a reader acts on. The
   // tag is an uppercase, tracked axis label ("STAGE"), which reads larger than
   // its size, so it sits a step below.
@@ -23,12 +27,16 @@ const SCALE: Record<Density, { pad: string; tag: string; label: string; meta: st
     tag: 'text-[0.65rem]',
     label: 'text-[0.95rem]',
     meta: 'text-[0.7rem]',
+    organTile: 'h-12 w-12',
+    organIcon: 'h-10 w-10',
   },
   compact: {
     pad: 'px-2.5 py-2',
     tag: 'text-[0.62rem]',
     label: 'text-[0.82rem]',
     meta: 'text-[0.7rem]',
+    organTile: 'h-10 w-10',
+    organIcon: 'h-8 w-8',
   },
 };
 
@@ -45,6 +53,11 @@ export function DecisionNode({ data }: NodeProps) {
   const style = NODE[d.hue ?? 'slate'][d.kind] ?? NODE.slate.DISEASE_TYPE;
   const s = SCALE[d.density];
   const hasCount = typeof d.trialCount === 'number';
+  // A cancer card carries the same organ drawing as the welcome screen, so the
+  // map reads as a continuation of the choice the visitor just made. It sits
+  // beside the name rather than above it: the card's height is fixed by the
+  // layout, and a picture stacked on top would push the counts out of the box.
+  const organ = d.kind === 'DISEASE_TYPE' ? organFor(d.label) : null;
 
   const shell = [
     'tt-card flex h-full w-full flex-col overflow-hidden rounded-xl border text-left shadow-sm',
@@ -61,14 +74,26 @@ export function DecisionNode({ data }: NodeProps) {
       {/* The axis this branch sits on (Stage / Histology / Line), so colour is
           never the only thing saying where you are. The pinned card says so in
           words too — a ring alone doesn't read as "this is not a choice". */}
-      <div className={`truncate ${s.tag} font-bold uppercase tracking-[0.14em] ${style.accent}`}>
-        {d.context ? 'Viewing · ' : ''}
-        {d.tag ?? KIND_LABEL[d.kind] ?? 'Branch'}
-      </div>
-      <div
-        className={`mt-0.5 line-clamp-2 break-words font-display ${s.label} font-bold leading-tight text-slate-900`}
-      >
-        {d.label}
+      <div className="flex min-w-0 items-start gap-2">
+        <div className="min-w-0 flex-1">
+          <div className={`truncate ${s.tag} font-bold uppercase tracking-[0.14em] ${style.accent}`}>
+            {d.context ? 'Viewing · ' : ''}
+            {d.tag ?? KIND_LABEL[d.kind] ?? 'Branch'}
+          </div>
+          <div
+            className={`mt-0.5 line-clamp-2 break-words font-display ${s.label} font-bold leading-tight text-slate-900`}
+          >
+            {d.label}
+          </div>
+        </div>
+        {organ && (
+          <span
+            aria-hidden
+            className={`flex shrink-0 items-center justify-center rounded-lg bg-white/80 ring-1 ring-white ${s.organTile}`}
+          >
+            <OrganIcon name={organ} hue={d.hue ?? 'slate'} className={s.organIcon} />
+          </span>
+        )}
       </div>
       {/* Counts sit on the baseline of the card so every branch reads at the
           same glance-height. "None recruiting" is spelled out rather than left
