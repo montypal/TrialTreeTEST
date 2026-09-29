@@ -46,8 +46,6 @@ const RESIZE_THRESHOLD = 8;
     re-planning the level — the layout is planned against this number, so it is
     worth paying a beat to only do it once. */
 const RESIZE_DEBOUNCE_MS = 140;
-/** Counted as "zoomed in" (and so worth panning) past this much of the fitted zoom. */
-const ZOOMED_IN_RATIO = 1.05;
 /** Margin left above/beside a level that is too big to frame, in CSS px. */
 const OVERFLOW_INSET = 12;
 
@@ -95,7 +93,7 @@ function TreeCanvas({
   onCounts,
   toolbar,
 }: Props) {
-  const { fitView, setViewport, zoomIn, zoomOut } = useReactFlow();
+  const { fitView, setViewport } = useReactFlow();
   const containerRef = useRef<HTMLDivElement>(null);
   const minZoom = kiosk ? KIOSK_MIN_ZOOM : MIN_ZOOM;
 
@@ -182,12 +180,12 @@ function TreeCanvas({
     [fitFloor],
   );
 
-  // The canvas holds still. Dragging the whole tree around was the primary way
-  // to move before, and it made a laid-out level feel like a map to wrestle —
-  // on touch a stray swipe also dragged the tree away mid-tap. So panning is
-  // off until you deliberately zoom in past the framed view, and re-locks the
-  // moment the tree is re-framed (drilling, filtering, or tapping "fit").
-  const [zoomedIn, setZoomedIn] = useState(false);
+  // The canvas holds still, and the reader cannot zoom it. Each level is laid
+  // out to be read at its framed size, so zooming only ever made it worse: a
+  // stray pinch left cards half off-screen, and the map became something to
+  // wrestle rather than read. Panning is off too, except in the one case below
+  // where part of the level genuinely does not fit.
+  //
   // True when even the framed view didn't fit — the fit bottomed out at the floor
   // and part of the graph is off-screen. Panning has to stay available there or
   // the cropped part is simply unreachable. Two things land here: the expanded
@@ -195,27 +193,19 @@ function TreeCanvas({
   // asked to show in full, which holds its cards at a readable size and runs off
   // the bottom rather than shrinking to fit.
   const [cropped, setCropped] = useState(false);
-  // The zoom the tree was last framed at — the baseline "zoomed in" compares
-  // to. Taken from the first viewport update AFTER a fit rather than read back
-  // straight after calling fitView, which can still report the previous zoom.
-  const fittedZoomRef = useRef<number | null>(null);
+  // Whether the level is cropped is read from the first viewport update AFTER
+  // a fit rather than straight after calling fitView, which can still report
+  // the previous zoom.
   const awaitingFitRef = useRef(true);
   const handleFitted = useCallback(() => {
     awaitingFitRef.current = true;
-    setZoomedIn(false);
   }, []);
   // Typed loosely on purpose: `unknown` accepts whatever event React Flow passes.
   const handleMove = useCallback(
     (_event: unknown, viewport: { zoom: number }) => {
-      if (awaitingFitRef.current) {
-        awaitingFitRef.current = false;
-        fittedZoomRef.current = viewport.zoom;
-        setZoomedIn(false);
-        setCropped(viewport.zoom <= fitFloor * 1.001);
-        return;
-      }
-      const fitted = fittedZoomRef.current;
-      setZoomedIn(fitted !== null && viewport.zoom > fitted * ZOOMED_IN_RATIO);
+      if (!awaitingFitRef.current) return;
+      awaitingFitRef.current = false;
+      setCropped(viewport.zoom <= fitFloor * 1.001);
     },
     [fitFloor],
   );
@@ -240,7 +230,6 @@ function TreeCanvas({
     // frame, or the rows below the fold are unreachable until something else
     // nudges the viewport.
     awaitingFitRef.current = false;
-    fittedZoomRef.current = zoom;
     setCropped(true);
     return true;
   }, [canvas, layout.nodes, setViewport]);
@@ -295,6 +284,29 @@ function TreeCanvas({
   // Flow has measured a new level's nodes can do nothing. Framing again once
   // they are measured closes that gap; with no `fitView` prop on <ReactFlow>
   // there is no competing fit, so this and the effect above are the only two.
+  // With the map's own zoom switched off, a pinch would fall through to the
+  // browser and zoom the whole page instead, which reads as the same thing to
+  // the reader. So a pinch over the map is swallowed: trackpads send it as
+  // ctrl+wheel, desktop Safari as gesture events, and touch screens are held by
+  // `touch-action: none` on the canvas. Keyboard zoom (Ctrl/Cmd +/-) still
+  // works anywhere, so the page can still be enlarged for readability.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || kiosk) return;
+    const onWheel = (e: WheelEvent) => {
+      if (e.ctrlKey) e.preventDefault();
+    };
+    const onGesture = (e: Event) => e.preventDefault();
+    el.addEventListener('wheel', onWheel, { passive: false });
+    el.addEventListener('gesturestart', onGesture);
+    el.addEventListener('gesturechange', onGesture);
+    return () => {
+      el.removeEventListener('wheel', onWheel);
+      el.removeEventListener('gesturestart', onGesture);
+      el.removeEventListener('gesturechange', onGesture);
+    };
+  }, [kiosk]);
+
   const nodesInitialized = useNodesInitialized();
   useEffect(() => {
     if (!nodesInitialized) return;
@@ -304,7 +316,7 @@ function TreeCanvas({
 
   return (
     <div className="flex h-full w-full flex-col">
-      <div ref={containerRef} className="relative min-h-0 w-full flex-1">
+      <div ref={containerRef} className="relative min-h-0 w-full flex-1 touch-none">
         <ReactFlow
           nodes={layout.nodes}
           edges={layout.edges}
@@ -318,7 +330,7 @@ function TreeCanvas({
           // `frame()` below; fitViewOptions still configures the zoom controls.
           fitViewOptions={fitViewOptions}
           minZoom={minZoom}
-          maxZoom={2}
+          maxZoom={MAX_FIT_ZOOM}
           proOptions={{ hideAttribution: true }}
           // Cards are click-to-drill, never draggable. Focus lives on the real
           // <button> inside each card instead of on React Flow's wrapper, so
@@ -328,7 +340,7 @@ function TreeCanvas({
           nodesFocusable={false}
           edgesFocusable={false}
           elementsSelectable={!kiosk}
-          panOnDrag={kiosk ? false : zoomedIn || cropped}
+          panOnDrag={kiosk ? false : cropped}
           // Scroll-pans only once the content genuinely runs past the canvas. A
           // level that fits has nowhere to go, and letting a stray wheel tick
           // drift it away was half of what made this feel like a map to wrestle;
@@ -336,10 +348,10 @@ function TreeCanvas({
           // gesture a reader already has in their hands.
           panOnScroll={kiosk ? false : cropped}
           onMove={kiosk ? undefined : handleMove}
-          // Wheel-zoom made every scroll a zoom by accident. Trackpad/touch
-          // pinch still works, and the status bar has explicit controls.
+          // No user zoom of any kind: not scroll, pinch or double-click. Each
+          // level is framed at the size it is meant to be read at.
           zoomOnScroll={false}
-          zoomOnPinch={!kiosk}
+          zoomOnPinch={false}
           zoomOnDoubleClick={false}
           // Still swallows the wheel/scroll gesture over the canvas even though
           // it no longer zooms — without it a swipe rubber-bands the page on iOS.
@@ -377,8 +389,8 @@ function TreeCanvas({
                 once there is somewhere to go — which is also the only time the
                 reader needs telling — and it names only the gestures that are
                 actually live: scroll-panning is enabled with `cropped`, not with
-                a pinch-zoom the reader drove themselves. */}
-            {(cropped || zoomedIn) && (
+                a zoom level the reader could not have chosen. */}
+            {cropped && (
               <span className="inline-flex shrink-0 items-center gap-1 font-semibold text-slate-600">
                 <svg
                   width="12"
@@ -393,17 +405,11 @@ function TreeCanvas({
                 >
                   <path d="M12 3v18M12 3L8 7M12 3l4 4M12 21l-4-4M12 21l4-4" />
                 </svg>
-                {cropped ? 'Drag or scroll to move' : 'Drag to move'}
+                Drag or scroll to move
               </span>
             )}
           </div>
           <div className="flex shrink-0 items-center gap-1">
-            <CanvasButton label="Zoom out" onClick={() => void zoomOut({ duration: 0 })} hideOnPhone>
-              <path d="M5 12h14" />
-            </CanvasButton>
-            <CanvasButton label="Zoom in" onClick={() => void zoomIn({ duration: 0 })} hideOnPhone>
-              <path d="M12 5v14M5 12h14" />
-            </CanvasButton>
             <button
               type="button"
               onClick={frame}
@@ -456,40 +462,4 @@ function boundsOf(nodes: Node[]): { x: number; y: number; right: number; bottom:
     bottom = Math.max(bottom, n.position.y + (n.height ?? 0));
   }
   return { x, y, right, bottom };
-}
-
-function CanvasButton({
-  label,
-  onClick,
-  hideOnPhone,
-  children,
-}: {
-  label: string;
-  onClick: () => void;
-  hideOnPhone?: boolean;
-  children: ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={label}
-      className={`h-11 w-11 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-sm transition-colors hover:bg-blue-50 hover:text-blue-700 sm:h-8 sm:w-8 ${
-        hideOnPhone ? 'hidden sm:inline-flex' : 'inline-flex'
-      }`}
-    >
-      <svg
-        width="16"
-        height="16"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        aria-hidden
-      >
-        {children}
-      </svg>
-    </button>
-  );
 }
