@@ -69,7 +69,7 @@ export function FindClient() {
       </div>
       <p className="mt-2 text-slate-600">
         Describe the clinical situation in plain language and the assistant will surface potential GU
-        oncology trials across Cedars-Sinai, City of Hope, UCLA, UCSD, UCI, and USC — ranked, with the
+        oncology trials across Cedars-Sinai, City of Hope, UCSD, and USC — ranked, with the
         reasoning.
       </p>
 

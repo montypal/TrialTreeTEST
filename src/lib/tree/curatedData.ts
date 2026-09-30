@@ -12,6 +12,15 @@
 //     Hillcrest / La Jolla campuses; the PDF itself doesn't name the site)
 //   • USC "GU & Urology Clinical Trials – Open to Accrual", 8 Sep 2026
 //     (identified as USC by its @med.usc.edu contacts)
+//   • City of Hope GU trial table (category, study title, NCT number, COH PI),
+//     sent by email, September 2026
+//
+// The City of Hope list gives an NCT number for every row but no phase. Each
+// NCT was looked up on ClinicalTrials.gov (29 Sep 2026) to confirm it is the
+// study the list names, and the phase for City of Hope rows comes from that
+// record. That lookup is also how eight rows were matched to trials already
+// listed here for other centres: the record's sponsor protocol ID (C6461008,
+// C6461006, NEO-811-101, CORE-008, EA8191, ...) matched the existing entry.
 //
 // A trial open at more than one centre is ONE trial with several sites
 // (confirmed against ClinicalTrials.gov protocol IDs where not identical).
@@ -29,7 +38,7 @@
 // and has no login.
 // ---------------------------------------------------------------------------
 
-export type CenterSlug = 'cedars-sinai' | 'ucsd' | 'usc';
+export type CenterSlug = 'cedars-sinai' | 'ucsd' | 'usc' | 'city-of-hope';
 
 export type CuratedSite = {
   center: CenterSlug;
@@ -77,6 +86,18 @@ const usc = (studyNo: string, pi: string | null, notes?: string): CuratedSite =>
   pi,
   notes: [`Study ${studyNo}`, notes].filter(Boolean).join('. '),
 });
+
+/** City of Hope rows carry the COH PI's surname and nothing else. */
+const coh = (pi: string, notes?: string): CuratedSite =>
+  notes ? { center: 'city-of-hope', pi, notes } : { center: 'city-of-hope', pi };
+
+/**
+ * Two City of Hope rows are listed as "active, not recruiting" on their
+ * ClinicalTrials.gov record. The COH list is the source here, so they stay,
+ * but the detail panel says so rather than letting them read as plainly open.
+ */
+const CTGOV_NOT_RECRUITING =
+  'ClinicalTrials.gov listed this study as active, not recruiting on 29 Sep 2026; confirm availability with the study team';
 
 const OPEN_HILLCREST = 'Open at Hillcrest';
 const COORDINATOR_TBD = 'Coordinator TBD — contact the project manager';
@@ -192,6 +213,7 @@ const PROSTATE: CuratedNode = {
             'INDICATE (EA8191): Local or Systemic Therapy Intensification Directed by PET in Prostate Cancer Patients with Post-Prostatectomy Biochemical Recurrence',
           shorthand: 'INDICATE',
           protocol: 'EA8191',
+          nct: 'NCT04423211',
           phase: 'Phase 3',
           sites: [
             ucsd(
@@ -199,6 +221,7 @@ const PROSTATE: CuratedNode = {
               'Randall',
               `Open cohorts: Arms C and D (PET positive for extra-pelvic metastases). ${OPEN_HILLCREST}`,
             ),
+            coh('Glaser'),
           ],
         },
       ],
@@ -271,6 +294,13 @@ const PROSTATE: CuratedNode = {
           shorthand: 'ASPIRE',
           protocol: 'A032302',
           sites: [ucsd('813502', 'Chen')],
+        },
+        {
+          title: 'SIMCAP (Surgery in Metastatic Carcinoma of Prostate)',
+          shorthand: 'SIMCAP',
+          nct: 'NCT03456843',
+          phase: 'Phase 2',
+          sites: [coh('Yuh', CTGOV_NOT_RECRUITING)],
         },
       ],
     },
@@ -413,6 +443,49 @@ const PROSTATE: CuratedNode = {
             'Progressive metastatic prostate cancer with neuroendocrine histologic, molecular, clinical, or biochemical features. Requires at least one 68Ga-DOTATATE-positive lesion; bone-only disease is allowed; prior cytotoxic chemotherapy is allowed but not required; ongoing castration unless the histology is pure neuroendocrine.',
           sites: [usc('4P-23-6', 'Pinski')],
         },
+        {
+          title: 'ANDROMEDA (AZD9750)',
+          shorthand: 'ANDROMEDA',
+          nct: 'NCT07336446',
+          phase: 'Phase 1/2',
+          sites: [coh('Nguyen')],
+        },
+        {
+          title: 'FG-3246 Dose Optimization Trial',
+          shorthand: 'FG-3246',
+          nct: 'NCT06842498',
+          phase: 'Phase 2',
+          sites: [coh('Shadad')],
+        },
+        {
+          title: 'PSCA CAR-T Combination Study',
+          shorthand: 'PSCA CAR-T',
+          nct: 'NCT05805371',
+          phase: 'Phase 1',
+          sites: [coh('Dorff')],
+        },
+        {
+          title: 'REGN15505 (PSMAx4-1BB) ± Cemiplimab/REGN4336',
+          shorthand: 'REGN15505',
+          nct: 'NCT07594106',
+          phase: 'Phase 1/2',
+          sites: [coh('Chehrazi-Raffle')],
+        },
+        {
+          title: 'RECIPROCAL',
+          shorthand: 'RECIPROCAL',
+          nct: 'NCT07200830',
+          phase: 'Phase 3',
+          sites: [coh('Stadler')],
+        },
+        {
+          title: 'AB-3028-201',
+          shorthand: 'AB-3028-201',
+          protocol: 'AB-3028-201',
+          nct: 'NCT07285694',
+          phase: 'Phase 1/2',
+          sites: [coh('Dorff', CTGOV_NOT_RECRUITING)],
+        },
       ],
     },
   ],
@@ -490,11 +563,12 @@ const BLADDER: CuratedNode = {
           title:
             'CORE-008: Multi-arm, Multi-cohort, Open-label Study of Cretostimogene Grenadenorepvec in Participants with High-risk Non-muscle-invasive Bladder Cancer',
           shorthand: 'CORE-008',
+          nct: 'NCT06567743',
           phase: 'Phase 2',
           setting: 'High-risk NMIBC — cohort-specific BCG settings',
           summary:
             'High-risk NMIBC with CIS with or without Ta/T1, or papillary high-grade Ta/T1. Eligibility and cystectomy requirements are cohort-specific across BCG-naive, BCG-exposed, and BCG-unresponsive populations.',
-          sites: [usc('4B-24-4', 'Daneshmand')],
+          sites: [usc('4B-24-4', 'Daneshmand'), coh('Hugen')],
         },
         {
           title:
@@ -535,6 +609,13 @@ const BLADDER: CuratedNode = {
             'Real-world NMIBC after TAR-200 initiation; Ta, T1, or CIS may be represented. Prior BCG exposure is broad and is collected as a variable rather than used as a protocol-defined stage category.',
           sites: [usc('4B-26-1', 'Daneshmand')],
         },
+        {
+          title: 'Nadofaragene Firadenovec vs Observation (ABLE-32)',
+          shorthand: 'ABLE-32',
+          nct: 'NCT06510374',
+          phase: 'Phase 3',
+          sites: [coh('Rabbani')],
+        },
       ],
     },
     {
@@ -561,7 +642,7 @@ const BLADDER: CuratedNode = {
           setting: 'After neoadjuvant chemotherapy with good response',
           summary:
             'Phase II study testing pembrolizumab plus radiation as a bladder-sparing strategy for patients with muscle-invasive bladder cancer who achieve a clinical response after neoadjuvant therapy.',
-          sites: [cedars('Ballas'), usc('S2427', 'Daneshmand')],
+          sites: [cedars('Ballas'), usc('S2427', 'Daneshmand'), coh('Tripathi')],
         },
         {
           title: 'NRG-GU015 (ARCHER): 5 vs 20 fractions of radiation',
@@ -583,6 +664,14 @@ const BLADDER: CuratedNode = {
           protocol: 'A032103',
           phase: 'Phase 2/3',
           sites: [ucsd('810099', 'Stewart')],
+        },
+        {
+          title: 'HCRN GU22-598 (EV + Pembrolizumab)',
+          shorthand: 'HCRN GU22-598',
+          protocol: 'HCRN GU22-598',
+          nct: 'NCT06809140',
+          phase: 'Phase 2',
+          sites: [coh('Tripathi')],
         },
       ],
     },
@@ -631,16 +720,18 @@ const BLADDER: CuratedNode = {
             'NCI ETCTN 10636: CA-4948 With Pembrolizumab to Overcome Resistance to PD-1/PD-L1 Blockade in Metastatic Urothelial Cancer',
           shorthand: 'ETCTN 10636',
           protocol: 'ETCTN 10636',
+          nct: 'NCT06439836',
           phase: 'Phase 1',
-          sites: [ucsd('812410', 'Stewart')],
+          sites: [ucsd('812410', 'Stewart'), coh('Tripathi')],
         },
         {
           title:
             'C6461006: PF-08634404 Monotherapy or in Combination with Enfortumab Vedotin in Locally Advanced or Metastatic Urothelial Cancer',
           shorthand: 'C6461006',
           protocol: 'C6461006',
+          nct: 'NCT07421700',
           phase: 'Phase 1b/2',
-          sites: [ucsd('813624', 'Stewart')],
+          sites: [ucsd('813624', 'Stewart'), coh('Tripathi')],
         },
         {
           title:
@@ -648,6 +739,24 @@ const BLADDER: CuratedNode = {
           shorthand: 'LOXO-LNC-24001',
           phase: 'Phase 1a/1b',
           sites: [ucsd('814162', 'Stewart', COORDINATOR_TBD)],
+        },
+        {
+          // placement: City of Hope lists this under Bladder – Metastatic; the
+          // study itself enrolls several HER2-expressing solid tumours.
+          title: 'BL-M07D1 HER2 Study',
+          shorthand: 'BL-M07D1',
+          nct: 'NCT06293898',
+          phase: 'Phase 1',
+          sites: [coh('Tripathi')],
+        },
+        {
+          // placement: City of Hope lists this under Bladder – Metastatic; the
+          // study itself enrolls several solid tumour types.
+          title: 'AKY-1189 (NECTINIUM-2)',
+          shorthand: 'AKY-1189',
+          nct: 'NCT07020117',
+          phase: 'Phase 1',
+          sites: [coh('Tripathi')],
         },
       ],
     },
@@ -688,7 +797,20 @@ const KIDNEY: CuratedNode = {
           kind: 'BIOMARKER',
           tag: 'Histology',
           children: [
-            { label: 'Neoadjuvant', kind: 'LINE_OF_THERAPY', tag: 'Line' },
+            {
+              label: 'Neoadjuvant',
+              kind: 'LINE_OF_THERAPY',
+              tag: 'Line',
+              trials: [
+                {
+                  title: 'Ivonescimab Prior to Surgery for High-Risk Localized Clear Cell RCC',
+                  shorthand: 'Ivonescimab',
+                  nct: 'NCT07226544',
+                  phase: 'Phase 2',
+                  sites: [coh('Pal')],
+                },
+              ],
+            },
             {
               label: 'Adjuvant',
               kind: 'LINE_OF_THERAPY',
@@ -705,6 +827,14 @@ const KIDNEY: CuratedNode = {
                   summary:
                     'Phase III study testing whether short-term VEGFR inhibition with tivozanib enhances the efficacy of adjuvant pembrolizumab in patients with high-risk resected clear-cell renal cell carcinoma.',
                   sites: [cedars('Posadas'), ucsd('812777', 'McKay'), usc('A032201', 'Tulpule', ALSO_LAG)],
+                },
+                {
+                  title:
+                    'Adding a Probiotic (CBM588) to Pembrolizumab for the Treatment of Renal Cell Cancer After Surgery',
+                  shorthand: 'CBM588 + pembrolizumab',
+                  nct: 'NCT07037004',
+                  phase: 'Phase 2',
+                  sites: [coh('Pal')],
                 },
               ],
             },
@@ -776,8 +906,9 @@ const KIDNEY: CuratedNode = {
                     'C6461008: PF-08634404 Monotherapy and in Combination with Other Anticancer Agents in Locally Advanced or Metastatic Renal Cell Carcinoma',
                   shorthand: 'C6461008',
                   protocol: 'C6461008',
+                  nct: 'NCT07227415',
                   phase: 'Phase 1b/2',
-                  sites: [ucsd('813550', 'McKay', 'Open cohorts: Arms A and B1')],
+                  sites: [ucsd('813550', 'McKay', 'Open cohorts: Arms A and B1'), coh('Pal')],
                 },
                 {
                   // placement: UCSD lists EXACT under "Metastatic, prior
@@ -801,6 +932,16 @@ const KIDNEY: CuratedNode = {
                     'Advanced or metastatic RCC with a clear-cell component, not amenable to curative surgery or radiation. No prior systemic therapy for advanced/metastatic disease and no prior immune-based combination therapy; prior neoadjuvant/adjuvant checkpoint therapy is allowed if more than 12 months before registration. RECIST 1.1 measurable or evaluable disease is required (bone-only or pleural-effusion-only disease is allowed); Zubrod 0–2. The patient must be eligible for an allowed first-line IO-IO or IO-TKI regimen, and IMDC favorable-risk patients must receive an IO-TKI regimen. No systemic antibiotics within 7 days before registration and no over-the-counter probiotic supplements during protocol treatment.',
                   sites: [usc('S2419', 'Sadeghi')],
                 },
+                {
+                  // placement: City of Hope lists this as Metastatic without a
+                  // line; the study's official title specifies first-line
+                  // treatment of metastatic RCC.
+                  title: 'Immunotherapy (Nivolumab and Ipilimumab) With and Without EXL01',
+                  shorthand: 'EXL01',
+                  nct: 'NCT07128680',
+                  phase: 'Phase 1',
+                  sites: [coh('Pal')],
+                },
               ],
             },
             {
@@ -823,15 +964,17 @@ const KIDNEY: CuratedNode = {
                   title:
                     'ARC-PEAK: Casdatifan and Cabozantinib Versus Placebo and Cabozantinib in Advanced Clear Cell Renal Cell Carcinoma',
                   shorthand: 'ARC-PEAK',
+                  nct: 'NCT07011719',
                   phase: 'Phase 3',
-                  sites: [ucsd('812233', 'McKay')],
+                  sites: [ucsd('812233', 'McKay'), coh('Pal')],
                 },
                 {
                   title:
                     'NEO-811-101: First-in-Human Dose Escalation and Expansion Study of NEO-811 in Locally Advanced or Metastatic Non-Resectable Clear Cell RCC',
                   shorthand: 'NEO-811-101',
+                  nct: 'NCT07300241',
                   phase: 'Phase 1/2',
-                  sites: [ucsd('813588', 'McKay')],
+                  sites: [ucsd('813588', 'McKay'), coh('Pal')],
                 },
                 {
                   // placement: an all-solid-tumor study; UCSD lists it under RCC
@@ -841,6 +984,15 @@ const KIDNEY: CuratedNode = {
                   shorthand: 'INCA036873-101',
                   phase: 'Phase 1',
                   sites: [ucsd('813929', 'Chen')],
+                },
+                {
+                  // placement: City of Hope lists this as Metastatic without a
+                  // line; it is for relapsed or refractory disease.
+                  title: 'XmAb819 in Relapsed/Refractory Clear Cell RCC',
+                  shorthand: 'XmAb819',
+                  nct: 'NCT05433142',
+                  phase: 'Phase 1',
+                  sites: [coh('Pal')],
                 },
               ],
             },
@@ -969,6 +1121,14 @@ const OTHER_GU: CuratedNode = {
           shorthand: 'PRISM',
           phase: 'Phase 1b',
           sites: [ucsd('812209', 'McKay')],
+        },
+        {
+          title: 'ADC MATCH',
+          shorthand: 'ADC MATCH',
+          nct: 'NCT06311214',
+          phase: 'Phase 2',
+          setting: 'Precision oncology / basket trial',
+          sites: [coh('Chehrazi-Raffle')],
         },
       ],
     },
