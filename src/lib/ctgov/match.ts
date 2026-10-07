@@ -11,8 +11,10 @@ import { formatPhase, type CtgovStudy, type CtgovLocation } from './client';
 // deliberately short of writing anything: a WRONG trial↔NCT link is worse than
 // no link at all, because it puts someone else's eligibility criteria and
 // someone else's study contact in front of a patient. Everything here is a
-// proposal with its reasoning spelled out; only the CONFIRM path in
-// /api/admin/nct-match — a human click — ever touches Trial.nctId.
+// proposal with its reasoning spelled out. The one caller that acts on it,
+// src/lib/ctgov/enrich.ts, links an NCT automatically only on an exact,
+// unambiguous protocol-identifier match; everything else is flagged for a
+// human, who confirms it by adding the NCT to curatedData.ts.
 //
 // Failure modes this code does NOT solve, and which the review UI should keep
 // saying out loud:
@@ -33,7 +35,7 @@ import { formatPhase, type CtgovStudy, type CtgovLocation } from './client';
 export const MATCH_CAVEAT =
   'These are search results, not answers. ClinicalTrials.gov search is fuzzy and protocol ' +
   'numbers are not globally unique, so open the record and read it before you confirm. ' +
-  'Confirming writes the NCT number onto the trial; nothing else here does.';
+  'Confirm a match by adding its NCT number to the trial in curatedData.ts.';
 
 /** The TrialTree side of a comparison. Flat on purpose so the route can build it from any query shape. */
 export type TrialForMatching = {

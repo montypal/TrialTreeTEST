@@ -78,6 +78,25 @@ model Trial {
   summarySource       String? // CURATED | AI_GENERATED | CTGOV
   summaryApproved     Boolean  @default(false)
   summaryGeneratedAt  DateTime?
+
+  // Clinical card facts, loaded from curatedData.ts. Each one is sourced
+  // (NCI Thesaurus or the ClinicalTrials.gov record) and none is generated at
+  // runtime. mechanismSources says where each mechanism came from.
+  intervention        String?
+  mechanism           String?
+  mechanismSources    String[] @default([])
+
+  // Where nctId came from: CURATED (a center's list / the curated file) or
+  // AUTO_MATCHED (src/lib/ctgov/enrich.ts, only on an exact identifier match).
+  nctSource           String?
+  nctMatchNote        String? // the identifier that justified an AUTO_MATCHED NCT
+
+  // Registry facts copied from ClinicalTrials.gov by the enrichment job. Read,
+  // never generated; ctgovCheckedAt says how fresh they are.
+  ctgovStatus         String? // overallStatus, e.g. RECRUITING
+  ctgovSponsor        String?
+  ctgovOfficials      Json?   // [{ name, role, affiliation }]
+  ctgovCheckedAt      DateTime?
   // Which decision node this trial lives under.
   decisionNodeId      String
   decisionNode        DecisionNode    @relation(fields: [decisionNodeId], references: [id], onDelete: Cascade)
@@ -324,4 +343,62 @@ model NctMatchCandidate {
 
   @@unique([trialId, nctId])
   @@index([status, confidence])
+}
+
+// --- Donor management (private) ---------------------------------------------
+// The foundation for recording gifts and, later, sending receipts and thank-you
+// notes. Nothing here is ever rendered on a public page and no public route
+// reads it: donor names, emails and amounts are private. The only way in is
+// src/lib/donors.ts, behind the token-gated /api/admin/donations route.
+//
+// Amounts are integer cents, never floats. A future Stripe or PayPal webhook
+// records its own payment id in externalId, which is unique, so a retried
+// webhook cannot record the same gift twice.
+
+enum DonationMethod {
+  CHECK
+  BANK_TRANSFER
+  STRIPE
+  PAYPAL
+  OTHER
+}
+
+model Donor {
+  id    String  @id @default(cuid())
+  name  String
+  email String? @unique // optional: a cheque may arrive with no email
+
+  // Consent for future updates and newsletters. Off unless the donor asked.
+  newsletterOptIn Boolean @default(false)
+  notes           String?
+
+  donations Donation[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model Donation {
+  id      String @id @default(cuid())
+  donorId String
+  // Restrict, not Cascade: deleting a donor must never silently erase the
+  // record of a gift (receipts and accounting depend on it).
+  donor   Donor  @relation(fields: [donorId], references: [id], onDelete: Restrict)
+
+  amountCents Int
+  currency    String         @default("USD")
+  donatedAt   DateTime
+  method      DonationMethod @default(OTHER)
+  externalId  String?        @unique // Stripe/PayPal payment id, once those exist
+
+  // Follow-up, each stamped when it actually happens.
+  receiptSentAt  DateTime?
+  thankYouSentAt DateTime?
+  acknowledgedAt DateTime? // e.g. a public or board acknowledgement
+
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([donorId])
+  @@index([donatedAt])
 }

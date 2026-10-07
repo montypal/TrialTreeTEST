@@ -55,8 +55,7 @@ trialtree/
 │   ├── app/
 │   │   ├── page.tsx                       # landing / index of kiosks
 │   │   ├── admin/
-│   │   │   ├── page.tsx + AdminClient.tsx # interactive desktop tree (pan/zoom/filter)
-│   │   │   └── review/                     # low-confidence approval queue
+│   │   │   └── page.tsx + AdminClient.tsx # interactive desktop tree (pan/zoom/filter)
 │   │   ├── kiosk/[location]/
 │   │   │   ├── page.tsx                    # validates slug
 │   │   │   └── KioskClient.tsx             # full-screen, no-chrome, live + QR
@@ -64,8 +63,7 @@ trialtree/
 │   │       ├── webhooks/sms/route.ts       # Twilio inbound (signed)
 │   │       ├── webhooks/email/route.ts     # SendGrid Inbound Parse (token)
 │   │       ├── tree/route.ts               # GET serialized tree
-│   │       ├── events/route.ts             # SSE stream
-│   │       └── admin/{pending,approve}/    # review queue API
+│   │       └── events/route.ts             # SSE stream
 │   ├── components/
 │   │   ├── TreeFlow.tsx                    # React Flow canvas (kiosk + admin modes)
 │   │   ├── nodes/{DecisionNode,TrialNode}.tsx
@@ -110,7 +108,6 @@ Open:
 - **Admin tree:** http://localhost:3000/admin
 - **Kiosk (City of Hope):** http://localhost:3000/kiosk/city-of-hope
 - **Kiosk in E-Ink mode:** http://localhost:3000/kiosk/city-of-hope?display=eink
-- **Review queue:** http://localhost:3000/admin/review
 
 ### Environment variables
 
@@ -144,7 +141,7 @@ Close the Phase II bladder trial at City of Hope, we hit accrual
 
 → parser returns `CLOSE_TRIAL` / shorthand `Phase II bladder trial` / `City of Hope` at ~88% →
 auto-applies → the `/kiosk/city-of-hope` board flashes and the trial flips to **Waitlisted** live.
-Low-confidence messages land in `/admin/review` instead.
+Low-confidence messages are not applied; they are logged in `ActionLog` as `PENDING_REVIEW` instead.
 
 ## Deploy a test instance (Railway)
 
@@ -209,8 +206,7 @@ webhooks call.
 
 ## Security hardening (before production)
 
-- [ ] Put `/admin/**` and `/api/admin/**` behind SSO/auth middleware (NextAuth, Clerk, or your IdP).
-      The endpoints are written but **not yet auth-gated** — see the notes in those files.
+- [ ] Put any curator-only route behind SSO/auth middleware (NextAuth, Clerk, or your IdP).
 - [ ] Add per-sender rate limiting on the webhooks.
 - [ ] Move the SSE bus to Postgres `LISTEN/NOTIFY` or Redis if you run more than one instance
       (call sites already abstracted in `src/lib/events.ts`).

@@ -1,26 +1,20 @@
 import Link from 'next/link';
 import { RIBBON_STRIPE } from '@/lib/cancerColors';
+import { SITE, mailto } from '@/lib/site';
 
 // ---------------------------------------------------------------------------
 // Site-wide footer. Deliberately free of hooks and browser APIs so it can be
 // dropped into a server component (the (site) layout) or a client shell (the
 // full-screen routes) without a 'use client' boundary either way.
 //
-// The organizational identity block is a visible placeholder on purpose: legal
-// entity name, nonprofit status and EIN are not confirmed, and a footer is
-// exactly the place where a plausible-looking guess would be read as fact.
+// Everything it says about TrialTree itself comes from SITE, so the footer,
+// About and Donate pages cannot drift apart. Unconfirmed facts are null there
+// and render as nothing here — no placeholder rows, no guessed handle.
 // ---------------------------------------------------------------------------
 
 type FooterGroup = { heading: string; links: { href: string; label: string }[] };
 
 const GROUPS: FooterGroup[] = [
-  {
-    heading: 'Trials',
-    links: [
-      { href: '/explore', label: 'Explore Trials' },
-      { href: '/find', label: 'Find a Trial' },
-    ],
-  },
   {
     heading: 'Contribute',
     links: [
@@ -38,7 +32,15 @@ const GROUPS: FooterGroup[] = [
   },
 ];
 
+// Negative margins cancel the padding, so each link gets a 44px tap target
+// without opening up the list spacing.
+const FOOTER_LINK =
+  '-mx-2 inline-flex min-h-[44px] items-center rounded-md px-2 text-sm font-medium text-slate-600 transition-colors hover:text-blue-700';
+
 export function SiteFooter() {
+  // Read once into a local so the null check narrows it for the JSX below.
+  const instagram = SITE.instagram;
+
   return (
     <footer className="mt-16 border-t border-slate-200 bg-white">
       <div className={`h-[3px] ${RIBBON_STRIPE}`} aria-hidden />
@@ -47,7 +49,7 @@ export function SiteFooter() {
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <div className="font-display text-base font-extrabold tracking-tight text-slate-900">
-              TrialTree
+              {SITE.name}
             </div>
             <p className="mt-2 text-sm leading-relaxed text-slate-500">
               A curated map of genitourinary cancer trials — prostate, bladder, and kidney — at
@@ -60,15 +62,10 @@ export function SiteFooter() {
               <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                 {group.heading}
               </h2>
-              <ul className="mt-3 space-y-1">
+              <ul className="mt-3">
                 {group.links.map((link) => (
                   <li key={link.href}>
-                    {/* Negative margins cancel the padding, so the tap target
-                        is comfortable without opening up the list spacing. */}
-                    <Link
-                      href={link.href}
-                      className="-mx-2 inline-flex min-h-[40px] items-center rounded-md px-2 text-sm font-medium text-slate-600 transition-colors hover:text-blue-700"
-                    >
+                    <Link href={link.href} className={FOOTER_LINK}>
                       {link.label}
                     </Link>
                   </li>
@@ -76,69 +73,62 @@ export function SiteFooter() {
               </ul>
             </nav>
           ))}
+
+          <div>
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Contact
+            </h2>
+            <ul className="mt-3">
+              <li>
+                {/* break-all: the address is one unbreakable word, and on a
+                    narrow phone it must wrap rather than push the page sideways. */}
+                <a href={mailto()} className={`${FOOTER_LINK} break-all`}>
+                  {SITE.contactEmail}
+                </a>
+              </li>
+              {instagram ? (
+                <li>
+                  <a
+                    href={instagram.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className={`${FOOTER_LINK} gap-2`}
+                  >
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden
+                      focusable="false"
+                    >
+                      <rect x="3" y="3" width="18" height="18" rx="5" />
+                      <circle cx="12" cy="12" r="4" />
+                      <circle cx="17.5" cy="6.5" r="0.9" fill="currentColor" stroke="none" />
+                    </svg>
+                    Follow us {instagram.handle}
+                  </a>
+                </li>
+              ) : null}
+            </ul>
+          </div>
         </div>
 
-        {/* Scope — what this site does and does not cover. */}
-        <div className="mt-10 border-t border-slate-200 pt-6">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-            Southern California scope
-          </h2>
-          <p className="mt-2 text-sm leading-relaxed text-slate-500">
-            Coverage is limited to genitourinary oncology trials — prostate, bladder, kidney and
-            other GU — at Southern California centers. Which centers have trials mapped today is
-            listed on the{' '}
-            <Link href="/about" className="font-semibold text-blue-700 underline underline-offset-2 hover:text-blue-800">
-              About page
-            </Link>
-            . Trials outside Southern California, and outside genitourinary oncology, are out of
-            scope — search{' '}
-            <a
-              href="https://clinicaltrials.gov"
-              target="_blank"
-              rel="noreferrer"
-              className="font-semibold text-blue-700 underline underline-offset-2 hover:text-blue-800"
-            >
-              ClinicalTrials.gov
-            </a>{' '}
-            for those.
-          </p>
-        </div>
+        {/* The one sentence a visitor must not miss, kept to a single line's
+            worth so it is read rather than scrolled past. */}
+        <p className="mt-10 border-t border-slate-200 pt-6 text-sm leading-relaxed text-slate-600">
+          <strong className="font-semibold text-slate-800">Decision support only.</strong> TrialTree
+          is not medical advice and does not determine eligibility. Confirm every trial with the
+          study team before acting on it.
+        </p>
 
-        {/* Medical disclaimer. Plain language, and repeated on every page
-            because it is the one thing a visitor must not miss. */}
-        <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4">
-          <h2 className="text-sm font-bold text-amber-900">Informational use only</h2>
-          <p className="mt-1.5 text-sm leading-relaxed text-amber-900">
-            TrialTree is an informational and decision-support resource. It is{' '}
-            <strong className="font-semibold">not medical advice</strong>, not an eligibility
-            determination, and using it does not create a doctor–patient relationship. Confirm
-            eligibility against the full protocol and with the study team before making any
-            treatment decision.
-          </p>
-        </div>
-
-        {/* Organizational identity — unverified, so it stays an obvious blank. */}
-        <div className="mt-6 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-            PLACEHOLDER — requires review before launch
-          </h2>
-          <ul className="mt-2 space-y-1 text-sm text-slate-500">
-            <li>Legal entity name: not yet confirmed</li>
-            <li>Nonprofit / 501(c)(3) status: not yet confirmed</li>
-            <li>EIN: not yet confirmed</li>
-            <li>Contact email and mailing address: not yet provided</li>
-          </ul>
-        </div>
-
-        <div className="mt-6 flex flex-col gap-2 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
-          <p>TrialTree · Southern California genitourinary oncology</p>
-          <Link
-            href="/terms"
-            className="-mx-2 inline-flex min-h-[40px] items-center rounded-md px-2 font-semibold text-slate-500 underline underline-offset-2 hover:text-blue-700 sm:min-h-0"
-          >
-            Terms of Use (draft)
-          </Link>
-        </div>
+        <p className="mt-4 text-xs text-slate-500">
+          {SITE.name} · Southern California genitourinary oncology
+        </p>
       </div>
     </footer>
   );

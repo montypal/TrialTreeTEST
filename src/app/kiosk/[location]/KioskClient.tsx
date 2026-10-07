@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { TreeFlow } from '@/components/TreeFlow';
-import { QRCodeBlock } from '@/components/QRCodeBlock';
 import { useTreeStream } from '@/components/useTreeStream';
 import { locationLabel } from '@/lib/locations';
 import { RIBBON_STRIPE } from '@/lib/cancerColors';
@@ -92,7 +91,7 @@ export function KioskClient({ locationSlug }: { locationSlug: string }) {
               No GU oncology trials mapped here yet
             </div>
             <div className="text-base text-slate-400 sm:text-xl">
-              Scan the code below to add this center&apos;s first trial.
+              Trials for this center will appear here once its list has been added.
             </div>
           </div>
         ) : (
@@ -106,10 +105,6 @@ export function KioskClient({ locationSlug }: { locationSlug: string }) {
           </div>
         )}
 
-        {/* QR code, bottom corner (margins keep it clear of the home indicator / notch) */}
-        <div className="absolute bottom-3 right-3 mb-[env(safe-area-inset-bottom)] mr-[env(safe-area-inset-right)] sm:bottom-6 sm:right-6">
-          <QRCodeBlock locationSlug={locationSlug} />
-        </div>
       </div>
     </div>
   );

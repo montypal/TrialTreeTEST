@@ -1,8 +1,9 @@
 import dagre from 'dagre';
 import type { Edge, Node } from '@xyflow/react';
-import type { TreeData, TreeFilter, TrialDTO, DecisionNodeDTO } from '@/types';
+import type { TreeData, TreeFilter, TrialDTO, DecisionNodeDTO, RecruitmentStatus } from '@/types';
 import { centerBySlug } from '@/lib/locations';
 import { hueFor, type CancerHue } from '@/lib/cancerColors';
+import { diseaseLabelFor } from '@/lib/tree/disease';
 
 // Pure (client-safe) transform: TreeData + filter -> laid-out React Flow graph.
 //
@@ -39,24 +40,61 @@ import { hueFor, type CancerHue } from '@/lib/cancerColors';
 export type Density = 'comfortable' | 'compact';
 
 /**
- * Card geometry, one size for every card at a given density. A uniform cell is
- * what lets the stepped grid pack rows without measuring anything, and it is
- * why the decision cards and the trial cards line up instead of stair-stepping.
+ * Card geometry per density. Every card at a density shares one width, so a
+ * grid column is the same column whatever it holds, and there are exactly two
+ * heights: `h` for a branch card and `trialH` for a trial card (and for the
+ * "+N more" tile that stands in for trial cards). Two fixed numbers are still
+ * what lets the stepped grid pack rows without measuring anything — a row is
+ * simply as tall as the tallest kind of card in it (see rowHeights).
+ *
+ * The trial card is taller because it answers more: what drug, how it works and
+ * why the study exists, as well as where it runs. Giving it its own height
+ * rather than raising the shared one keeps every branch level exactly as dense
+ * as it was.
+ *
  * `rankGap` is the horizontal gap between levels in the dagre layout.
  */
 export const CARD_METRICS: Record<
   Density,
-  { w: number; h: number; minW: number; gapX: number; gapY: number; rankGap: number; maxCols: number }
+  {
+    w: number;
+    h: number;
+    trialH: number;
+    minW: number;
+    gapX: number;
+    gapY: number;
+    rankGap: number;
+    maxCols: number;
+  }
 > = {
   // `w` is the width a card is authored at; the stepped grid re-cuts it per
   // column count so a row always fits at the card's real type size (see
   // cellWidthFor). `minW` is the narrowest that re-cut may go before a column
   // count is simply ruled out — past it the title clamps too early to scan.
-  comfortable: { w: 248, h: 132, minW: 200, gapX: 28, gapY: 24, rankGap: 104, maxCols: 5 },
-  // The small card is deliberately no taller than the old trial card: the kiosk
-  // draws the whole tree at once, so every extra pixel of card height is paid
-  // for by the fit zooming further out. Two columns is the phone's ceiling —
-  // a third would put three ~110px cards across a 360px screen.
+  //
+  // `trialH` is not a guess: it is the sum of TrialNode's clamped lines at their
+  // explicit line heights, worst case, plus slack. Comfortable: 2 border + 20
+  // padding + 20 status row + 21 name (one line) + 20 intervention + 18
+  // mechanism + 36 brief (two lines) + 8 + 16 sites and PIs (one line) + 18 NCT
+  // and disease = 179, plus 1px. Change a line there and this number has to
+  // follow. It stops where it does on purpose: a row of these needs
+  // (rows x 180 + gaps) x 1.06 of canvas, so two rows frame on the ~415px a
+  // 1366x768 laptop leaves the map and three on the ~630px of a maximised 1080p
+  // window. Taller cards cost a whole row on both.
+  comfortable: { w: 248, h: 132, trialH: 180, minW: 200, gapX: 28, gapY: 24, rankGap: 104, maxCols: 5 },
+  // The small branch card is deliberately no taller than the old trial card:
+  // the kiosk draws the whole tree at once, so every extra pixel of card height
+  // is paid for by the fit zooming further out. Two columns is the phone's
+  // ceiling — a third would put three ~110px cards across a 360px screen.
+  //
+  // The small trial card carries less rather than smaller type (no NCT, PIs or
+  // disease; a two-line brief): 2 border + 16 padding + 20 status row + 36 name
+  // + 20 intervention + 18 mechanism + 36 brief + 22 sites = 170, plus 2px of
+  // slack. On a 360x640 phone the map has roughly 400px, which frames two rows
+  // of one column: a level pages at one trial and the "+N more" tile, and the
+  // outline view lists every trial in a scrolling column. The kiosk draws this
+  // same card, so its whole-tree fit sits further out than it did when a trial
+  // card was 104px tall; the alternative was a kiosk card that names no drug.
   //
   // gapY is 18 rather than the 14 it started at. These cards carry a shadow and
   // a 2px hover lift, and at 14 two stacked cards read as one merged block even
@@ -68,10 +106,10 @@ export const CARD_METRICS: Record<
   // line each. Narrower, they wrapped or ellipsized inside the fixed height.
   // In practice that means iPhone-width screens get one full-width column and
   // two columns start around 400px — fewer cards at once, each one readable.
-  compact: { w: 200, h: 104, minW: 176, gapX: 16, gapY: 18, rankGap: 56, maxCols: 2 },
+  compact: { w: 200, h: 104, trialH: 172, minW: 176, gapX: 16, gapY: 18, rankGap: 56, maxCols: 2 },
 };
 
-type Cell = { w: number; h: number; minW: number; gapX: number; gapY: number; maxCols: number };
+type Cell = { w: number; h: number; trialH: number; minW: number; gapX: number; gapY: number; maxCols: number };
 
 /** Gap between the "you are here" card and the grid of next steps. */
 const CONTEXT_GUTTER = 76;
@@ -172,9 +210,24 @@ export type TrialNodeData = {
   title: string;
   phase: string | null;
   nctId: string | null;
+  /** The trial's lead PI, when the record names one (site PIs are on `statuses`). */
   pi: string | null;
   shorthand: string | null;
-  statuses: { locationName: string; short: string; status: TrialDTO['locations'][number]['status'] }[];
+  /** What is being tested, as a physician would say it. */
+  intervention: string | null;
+  /** How the investigational agent(s) work, as a cited source states it. */
+  mechanism: string | null;
+  /** The approved one-sentence clinical summary (TrialDTO.summary). */
+  brief: string | null;
+  /** Where the trial sits in the tree, short form: "Prostate · mCRPC". */
+  disease: string | null;
+  /** One entry per site, open sites first. `pi` is that site's investigator. */
+  statuses: {
+    locationName: string;
+    short: string;
+    status: TrialDTO['locations'][number]['status'];
+    pi: string | null;
+  }[];
   cohorts: { label: string; status: string }[];
   hue?: CancerHue;
   density: Density;
@@ -229,6 +282,20 @@ type RNode = {
   tag?: string | null;
 };
 
+/** Same precedence as the card's status pill: one open site makes a study open. */
+const SITE_ORDER: Record<RecruitmentStatus, number> = {
+  RECRUITING: 0,
+  WAITLISTED: 1,
+  SUSPENDED: 2,
+  CLOSED: 3,
+};
+
+/** A blank string from the database is no more a value than a null is. */
+function present(value: string | null | undefined): string | null {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+}
+
 function trialMatchesFilter(trial: TrialDTO, filter: TreeFilter): boolean {
   if (filter.locationSlug && !trial.locations.some((l) => l.locationSlug === filter.locationSlug)) {
     return false;
@@ -241,12 +308,16 @@ function trialMatchesFilter(trial: TrialDTO, filter: TreeFilter): boolean {
   }
   const q = filter.search?.trim().toLowerCase();
   if (q) {
+    // The search box promises drugs as well as titles, and a study's drug is
+    // often named only in its intervention, not in its title.
     const hay = [
       trial.title,
       trial.nctId,
       trial.shorthand,
       trial.protocolNumber,
       trial.principalInvestigator,
+      trial.intervention,
+      trial.mechanism,
       ...trial.locations.map((l) => l.piName ?? ''),
     ]
       .filter(Boolean)
@@ -369,7 +440,8 @@ export function buildTree(data: TreeData, filter: TreeFilter = {}, opts: BuildOp
       // …plus the trials that sit directly on this node, as cards. A node can
       // hold both (RCC "Non-metastatic" carries one trial of its own alongside
       // its histology branches), so the next level is a mixed set and the grid
-      // places the two kinds of card in one run of equal cells.
+      // places the two kinds of card in one run of equal-width cells, each row
+      // as tall as the tallest card in it.
       stepTrials = directByNode.get(eff) ?? [];
       collapse = true;
     } else {
@@ -440,17 +512,36 @@ export function buildTree(data: TreeData, filter: TreeFilter = {}, opts: BuildOp
     return d;
   };
 
+  // A trial's disease is read off where it hangs in the tree. The trials on one
+  // level share a node, so each node's label is worked out once per pass.
+  const diseaseByNode = new Map<string, string | null>();
+  const diseaseOf = (nodeId: string): string | null => {
+    if (!diseaseByNode.has(nodeId)) {
+      diseaseByNode.set(nodeId, diseaseLabelFor(nodeId, data.decisionNodes)?.short ?? null);
+    }
+    return diseaseByNode.get(nodeId) ?? null;
+  };
+
   const trialData = (t: TrialDTO): TrialNodeData => ({
     title: t.title,
     phase: t.phase,
     nctId: t.nctId,
     pi: t.principalInvestigator,
     shorthand: t.shorthand,
-    statuses: (locSlug ? t.locations.filter((l) => l.locationSlug === locSlug) : t.locations).map((l) => ({
-      locationName: l.locationName,
-      short: centerBySlug(l.locationSlug)?.shortName ?? l.locationName,
-      status: l.status,
-    })),
+    intervention: present(t.intervention),
+    mechanism: present(t.mechanism),
+    brief: present(t.summary),
+    disease: diseaseOf(t.decisionNodeId),
+    // Open sites first: a card names only its first few sites, and the one it
+    // leaves off must never be the place a patient could actually enrol.
+    statuses: (locSlug ? t.locations.filter((l) => l.locationSlug === locSlug) : t.locations)
+      .map((l) => ({
+        locationName: l.locationName,
+        short: centerBySlug(l.locationSlug)?.shortName ?? l.locationName,
+        status: l.status,
+        pi: present(l.piName),
+      }))
+      .sort((a, b) => SITE_ORDER[a.status] - SITE_ORDER[b.status]),
     cohorts: t.cohorts.map((c) => ({ label: c.label, status: c.status })),
     hue: hueFor(rootLabel(t.decisionNodeId, byId)),
     density,
@@ -505,7 +596,10 @@ export function buildTree(data: TreeData, filter: TreeFilter = {}, opts: BuildOp
     }
   }
 
-  // Trial leaf nodes — each branches off the node it belongs to.
+  // Trial leaf nodes — each branches off the node it belongs to. They are taller
+  // than the branch cards, and dagre is told so: it spaces a rank by each node's
+  // own height, so the taller cards cannot land on one another.
+  const trialCell = { w: cell.w, h: cell.trialH };
   let shownTrials = 0;
   const orderedCards = new Map<string, TrialDTO[]>();
   for (const [holderId, ts] of cards) {
@@ -513,7 +607,7 @@ export function buildTree(data: TreeData, filter: TreeFilter = {}, opts: BuildOp
     orderedCards.set(holderId, sorted);
     for (const t of sorted) {
       const tid = `trial-${t.id}`;
-      g.setNode(tid, { width: cell.w, height: cell.h });
+      g.setNode(tid, { width: trialCell.w, height: trialCell.h });
       g.setEdge(holderId, tid);
       rfEdges.push({ id: `e-${holderId}-${tid}`, source: holderId, target: tid, type: 'smoothstep' });
       shownTrials += 1;
@@ -545,9 +639,9 @@ export function buildTree(data: TreeData, filter: TreeFilter = {}, opts: BuildOp
         card({
           id: `trial-${t.id}`,
           type: 'trial',
-          x: p.x - cell.w / 2,
-          y: p.y - cell.h / 2,
-          cell,
+          x: p.x - trialCell.w / 2,
+          y: p.y - trialCell.h / 2,
+          cell: trialCell,
           data: trialData(t),
           interactive,
         }),
@@ -572,11 +666,12 @@ export function buildTree(data: TreeData, filter: TreeFilter = {}, opts: BuildOp
     let minY = Infinity;
     let maxX = -Infinity;
     let maxY = -Infinity;
+    // Each node's own box, not one shared size: branch and trial cards differ.
     for (const n of rfNodes) {
       minX = Math.min(minX, n.position.x);
       minY = Math.min(minY, n.position.y);
-      maxX = Math.max(maxX, n.position.x + cell.w);
-      maxY = Math.max(maxY, n.position.y + cell.h);
+      maxX = Math.max(maxX, n.position.x + (n.width ?? cell.w));
+      maxY = Math.max(maxY, n.position.y + (n.height ?? cell.h));
     }
     const slack = 1 + FIT_PADDING;
     const fitW = opts.canvas.width / slack / (maxX - minX);
@@ -613,6 +708,10 @@ export function buildTree(data: TreeData, filter: TreeFilter = {}, opts: BuildOp
  * (see gridLayout), so a level that fits in one gets to keep them. Wide levels
  * are lists of trials rather than forks in the tree, and lose little by being
  * laid out as a block.
+ *
+ * Heights are scored exactly as gridLayout draws them (gridHeight): the fixed
+ * cells come first at the branch height, and every cell after them — trials
+ * and the "+N more" tile — at the trial height.
  */
 function planGrid(
   fixed: number,
@@ -623,9 +722,8 @@ function planGrid(
   preferSingleColumn: boolean,
 ): { cols: number; shownFlex: number; hidden: number } {
   const zoomAt = (cells: number, cols: number) => {
-    const rows = Math.max(1, Math.ceil(cells / cols));
     const w = cols * cellWidthFor(cols, area.width, cell) + (cols - 1) * cell.gapX;
-    const h = rows * cell.h + (rows - 1) * cell.gapY;
+    const h = gridHeight(cells, fixed, cols, cell);
     return Math.min(area.width / w, area.height / h, MAX_FIT_ZOOM);
   };
   const zoomFor = (cells: number) => {
@@ -654,6 +752,35 @@ function planGrid(
     }
   }
   return { cols: plan.cols, shownFlex, hidden: flex - shownFlex };
+}
+
+/**
+ * The height of each row of a stepped grid of `cells` cards in `cols` columns,
+ * where the first `fixed` cards are branches and every card after them is
+ * trial-sized (a trial, or the "+N more" tile).
+ *
+ * A row is as tall as the tallest card in it. The grid always places branches
+ * before trials, so a row holds a trial exactly when its last index is past the
+ * branches — and a branch card that shares that row keeps its own height, top
+ * aligned, rather than being stretched to match. Laying rows out by their
+ * tallest card is what keeps a taller trial card from reaching into the row
+ * below it.
+ */
+function rowHeights(cells: number, fixed: number, cols: number, cell: Cell): number[] {
+  const rows = Math.max(1, Math.ceil(cells / cols));
+  const heights: number[] = [];
+  for (let row = 0; row < rows; row++) {
+    const last = Math.min(cells, (row + 1) * cols) - 1;
+    heights.push(last >= fixed ? cell.trialH : cell.h);
+  }
+  return heights;
+}
+
+/** Total height of that grid, gaps included — what the planner scores and the
+    pinned card centres on. */
+function gridHeight(cells: number, fixed: number, cols: number, cell: Cell): number {
+  const heights = rowHeights(cells, fixed, cols, cell);
+  return heights.reduce((sum, h) => sum + h, 0) + (heights.length - 1) * cell.gapY;
 }
 
 /**
@@ -709,9 +836,8 @@ function gridLayout(args: {
   const framed = (nCols: number, nCells: number, g: number) => {
     if (nCells <= 0) return MAX_FIT_ZOOM;
     const a = areaFor(g);
-    const nRows = Math.max(1, Math.ceil(nCells / nCols));
     const w = nCols * cellWidthFor(nCols, a.width, cell) + (nCols - 1) * cell.gapX;
-    const h = nRows * cell.h + (nRows - 1) * cell.gapY;
+    const h = gridHeight(nCells, branches.length, nCols, cell);
     return Math.min(a.width / w, a.height / h);
   };
   const cellsIn = (p: { shownFlex: number; hidden: number }) =>
@@ -773,7 +899,6 @@ function gridLayout(args: {
 
   const shownTrials = trials.slice(0, shownFlex);
   const cols = overflow ? colsForWidth(cells, cell, area.width) : plan.cols;
-  const rows = Math.max(1, Math.ceil(cells / cols));
 
   // Every arrangement is cut to the width it has — one column or five — using
   // the same function the planner scored it with, so the plan and the drawing
@@ -782,8 +907,21 @@ function gridLayout(args: {
   // floor, so its budget is the floor's rather than the raw area's.
   const cellW = cellWidthFor(cols, area.width / (overflow ? MIN_CARD_ZOOM : 1), cell);
   const gridCell = { w: cellW, h: cell.h };
+  // Trials and the "+N more" tile share a column's width but have their own,
+  // taller height — every trial-sized card on this level is cut from this.
+  const trialCell = { w: cellW, h: cell.trialH };
   const gridW = cols * cellW + (cols - 1) * cell.gapX;
-  const gridH = rows * cell.h + (rows - 1) * cell.gapY;
+  const gridH = gridHeight(cells, branches.length, cols, cell);
+
+  // Rows differ in height (a branch row is shorter than a trial row), so a
+  // row's top is the running sum of the rows above it, not a multiple of one
+  // height. Built from the same rowHeights the planner scored.
+  const rowTop: number[] = [];
+  let nextTop = 0;
+  for (const h of rowHeights(cells, branches.length, cols, cell)) {
+    rowTop.push(nextTop);
+    nextTop += h + cell.gapY;
+  }
 
   // A half-empty last row centred under the ones above reads as a deliberate
   // block; left-aligned it reads as something that failed to load.
@@ -796,7 +934,7 @@ function gridLayout(args: {
     const col = index % cols;
     return {
       x: gutter + rowOffset(row) + col * (cellW + cell.gapX),
-      y: row * (cell.h + cell.gapY),
+      y: rowTop[row],
     };
   };
 
@@ -808,6 +946,10 @@ function gridLayout(args: {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
 
+  // The pinned card stays a branch-sized card even beside a column of taller
+  // trial cards. It lives in its own gutter, so it can never share a row with
+  // them; it only has to centre on the grid's real height, which gridH already
+  // sums row by row.
   if (context) {
     nodes.push(
       card({
@@ -859,7 +1001,7 @@ function gridLayout(args: {
     const p = place(index++);
     const id = `trial-${t.id}`;
     nodes.push(
-      card({ id, type: 'trial', x: p.x, y: p.y, cell: gridCell, data: args.trialData(t), interactive }),
+      card({ id, type: 'trial', x: p.x, y: p.y, cell: trialCell, data: args.trialData(t), interactive }),
     );
     connect(id);
   }
@@ -867,7 +1009,7 @@ function gridLayout(args: {
     const p = place(index++);
     const data: MoreTrialsNodeData = { hidden, total: trials.length, density, interactive };
     nodes.push(
-      card({ id: 'more-trials', type: MORE_NODE_TYPE, x: p.x, y: p.y, cell: gridCell, data, interactive }),
+      card({ id: 'more-trials', type: MORE_NODE_TYPE, x: p.x, y: p.y, cell: trialCell, data, interactive }),
     );
     connect('more-trials');
   }

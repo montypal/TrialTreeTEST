@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 const STEPS = [
   {
     title: 'You submit the study',
-    body: 'The form below is stored for the TrialTree team to review. Nothing is published at this point, and nothing appears on any TrialTree board, kiosk, or search result.',
+    body: 'The form below is stored for the TrialTree team to review. Nothing is published at this point, and nothing appears anywhere on TrialTree.',
   },
   {
     title: 'A reviewer verifies it',

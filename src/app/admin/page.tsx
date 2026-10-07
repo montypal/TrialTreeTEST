@@ -1,7 +1,14 @@
-import { AdminClient } from './AdminClient';
+import type { Metadata } from 'next';
+import { ExploreShell } from '@/components/ExploreShell';
 
-// Interactive desktop view: pan/zoom/filter the full tree. Wrap this route with
-// your auth/SSO middleware before production (see README "Security hardening").
+export const metadata: Metadata = {
+  title: 'Explore Trials',
+};
+
+// Legacy URL. /admin was never a private area — it is where the tree first
+// lived — so it stays as one more door into the same browse shell as the
+// homepage, site navigation included, for anyone holding an old bookmark.
+// The curator tools it used to link to have been retired.
 export default function AdminPage() {
-  return <AdminClient />;
+  return <ExploreShell disease={null} />;
 }

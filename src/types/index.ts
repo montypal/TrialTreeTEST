@@ -49,6 +49,39 @@ export interface TrialDTO {
   summarySource?: string | null;
   summaryApproved?: boolean;
   summaryGeneratedAt?: string | null;
+  /** What is being tested, as a physician would say it ("Belzutifan + pembrolizumab"). */
+  intervention?: string | null;
+  /** Mechanism of the investigational agent(s), as the NCI Thesaurus or the
+      ClinicalTrials.gov record states it. Null when no source states one. */
+  mechanism?: string | null;
+  /** Where each mechanism came from: "NCIT:C135627" or "CTGOV:NCT01234567". */
+  mechanismSources?: string[];
+  /** CURATED: the NCT came from a center's list or the curated file.
+      AUTO_MATCHED: the enrichment job matched it on a ClinicalTrials.gov
+      identifier. Null when there is no NCT yet. */
+  nctSource?: string | null;
+  /** For AUTO_MATCHED only: the identifier that justified the match. */
+  nctMatchNote?: string | null;
+  /** Registry facts read from ClinicalTrials.gov, never generated. Null until
+      the enrichment job has fetched this trial's record. */
+  ctgov?: CtgovMetaDTO | null;
+}
+
+export interface CtgovOfficialDTO {
+  name: string;
+  /** As registered: "Principal Investigator", "Study Chair", "Study Director". */
+  role: string | null;
+  affiliation: string | null;
+}
+
+/** What ClinicalTrials.gov says about a trial, and when we last asked. */
+export interface CtgovMetaDTO {
+  /** Registry status as registered, e.g. "RECRUITING", "ACTIVE_NOT_RECRUITING". */
+  overallStatus: string | null;
+  sponsor: string | null;
+  officials: CtgovOfficialDTO[];
+  /** ISO timestamp of the fetch. */
+  checkedAt: string;
 }
 
 export interface TreeData {

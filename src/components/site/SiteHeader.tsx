@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { RIBBON_STRIPE } from '@/lib/cancerColors';
+import { HOME_EVENT } from '@/lib/site';
 
 // ---------------------------------------------------------------------------
 // Site-wide primary navigation.
@@ -15,9 +16,9 @@ import { RIBBON_STRIPE } from '@/lib/cancerColors';
 
 type NavLink = { href: string; label: string };
 
+// No "browse trials" entry: the logo goes to "/", which is the cancer chooser,
+// so the trials are always one tap away without a second door competing with it.
 const NAV: NavLink[] = [
-  { href: '/explore', label: 'Explore Trials' },
-  { href: '/find', label: 'Find a Trial' },
   { href: '/about', label: 'About' },
   { href: '/submit', label: 'Trial Submission' },
   { href: '/suggestions', label: 'Suggestions' },
@@ -47,11 +48,14 @@ export function SiteHeader() {
   // have to tab through the whole header again.
   useEffect(() => {
     if (!open) return;
+    // One Escape closes one layer: an Escape something above already handled
+    // is left alone, and this one is marked handled so the trial panel
+    // underneath does not close with the menu.
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setOpen(false);
-        toggleRef.current?.focus();
-      }
+      if (event.key !== 'Escape' || event.defaultPrevented) return;
+      event.preventDefault();
+      setOpen(false);
+      toggleRef.current?.focus();
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
@@ -66,7 +70,18 @@ export function SiteHeader() {
       <div className="mx-auto flex h-full max-w-6xl items-center justify-between gap-3 px-4 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))]">
         <Link
           href="/"
-          className="flex shrink-0 items-center gap-2 rounded-md py-1.5 pr-1 text-slate-900"
+          // Already on the bare homepage, a navigation would change nothing and
+          // would wipe the chooser's own history entry, so it is skipped and the
+          // chooser is asked to come back instead (see HOME_EVENT). With a
+          // ?disease= query the real navigation runs and remounts the chooser.
+          onClick={(event) => {
+            setOpen(false);
+            if (pathname === '/' && !window.location.search) {
+              event.preventDefault();
+              window.dispatchEvent(new Event(HOME_EVENT));
+            }
+          }}
+          className="flex min-h-[44px] shrink-0 items-center gap-2 rounded-md pr-1 text-slate-900"
           aria-label="TrialTree home"
         >
           <svg
@@ -91,7 +106,7 @@ export function SiteHeader() {
         </Link>
 
         {/* shrink-0 + nowrap: in a fixed 56px bar a label that wrapped would be
-            clipped, and six labels only just fit at 768px. */}
+            clipped, so a label never gets the chance to. */}
         <nav aria-label="Primary" className="hidden shrink-0 md:flex md:items-center md:gap-0.5">
           {NAV.map((link) => {
             const active = isActive(pathname, link.href);

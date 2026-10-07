@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     template: '%s — TrialTree',
   },
   description:
-    'Real-time clinical decision-tree mapping for Genitourinary cancer trials across Southern California.',
+    'Genitourinary cancer clinical trials at Southern California cancer centers, curated by hand and organized as a decision tree by cancer, disease state and line of therapy.',
 };
 
 // Mobile viewport. viewportFit 'cover' lets full-bleed shells reach the screen

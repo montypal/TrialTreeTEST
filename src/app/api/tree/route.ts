@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { cleanPi, piKey } from '@/lib/pi';
+import { coerceOfficials } from '@/lib/ctgov/enrich';
 import type { TreeData } from '@/types';
 
 export const runtime = 'nodejs';
@@ -50,7 +51,12 @@ export async function GET(_req: NextRequest) {
       phase: t.phase,
       // Clean the lead PI for display, but do NOT add it to the filter list —
       // the dropdown should only offer California SITE investigators.
-      principalInvestigator: cleanPi(t.principalInvestigator),
+      // The lists name site PIs, never a lead PI, so this is normally the
+      // registry's own Principal Investigator: read from ClinicalTrials.gov,
+      // never inferred. Not added to the PI filter, which lists site PIs only.
+      principalInvestigator:
+        cleanPi(t.principalInvestigator) ??
+        cleanPi(coerceOfficials(t.ctgovOfficials).find((o) => o.role === 'Principal Investigator')?.name),
       eligibilityCriteria: t.eligibilityCriteria,
       decisionNodeId: t.decisionNodeId,
       locations: t.locations.map((l) => ({
@@ -69,6 +75,21 @@ export async function GET(_req: NextRequest) {
       summarySource: t.summaryApproved ? t.summarySource : null,
       summaryApproved: t.summaryApproved,
       summaryGeneratedAt: t.summaryApproved && t.summaryGeneratedAt ? t.summaryGeneratedAt.toISOString() : null,
+      intervention: t.intervention,
+      mechanism: t.mechanism,
+      mechanismSources: t.mechanismSources,
+      nctSource: t.nctSource,
+      nctMatchNote: t.nctMatchNote,
+      // Registry facts exist only once the enrichment job has fetched them;
+      // before that the card says nothing rather than an empty "as of".
+      ctgov: t.ctgovCheckedAt
+        ? {
+            overallStatus: t.ctgovStatus,
+            sponsor: t.ctgovSponsor,
+            officials: coerceOfficials(t.ctgovOfficials),
+            checkedAt: t.ctgovCheckedAt.toISOString(),
+          }
+        : null,
     })),
     principalInvestigators: [...piMap.values()].sort((a, b) => a.localeCompare(b)),
   };

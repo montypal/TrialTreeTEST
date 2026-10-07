@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
   });
 
   const prefix =
-    result.status === 'APPLIED' ? '✅ Updated: ' : result.status === 'PENDING_REVIEW' ? '🕓 Queued for review: ' : '⚠️ ';
+    result.status === 'APPLIED' ? '✅ Updated: ' : result.status === 'PENDING_REVIEW' ? '⚠️ Not applied: ' : '⚠️ ';
   return twiml(prefix + result.message);
 }
 

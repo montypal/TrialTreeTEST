@@ -2,7 +2,8 @@ import { Fragment, type ReactNode } from 'react';
 
 // ---------------------------------------------------------------------------
 // The small shared pieces the trial panel is built from: provenance badges,
-// the "Not available" state, the disclosure wrapper and the identifier list.
+// the fixed wordings for a missing NCT or PI, the "Not available" state, the
+// disclosure wrapper and the identifier list.
 //
 // They live in one file on purpose. The panel's honesty rules only hold if
 // they are applied uniformly — a field we don't have must always *look* like a
@@ -10,6 +11,14 @@ import { Fragment, type ReactNode } from 'react';
 // be made the same way. Scattering these across components is how a clinical
 // UI quietly starts implying it knows more than it does.
 // ---------------------------------------------------------------------------
+
+/**
+ * The two absences a reader actively looks for, each said one way only,
+ * everywhere. "Not found" or "not listed" would read as a fact about the
+ * study; these say what is actually true — we have not confirmed it yet.
+ */
+export const NCT_PENDING = 'NCT number pending verification';
+export const PI_UNAVAILABLE = 'Principal Investigator information unavailable';
 
 /**
  * Where a piece of text on the panel came from.
@@ -55,7 +64,7 @@ export function ProvenanceBadge({
 }) {
   return (
     <span
-      className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[0.62rem] font-semibold uppercase tracking-wide ring-1 ${PROVENANCE_CLASS[provenance]} ${className ?? ''}`}
+      className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[0.7rem] font-semibold uppercase tracking-wide ring-1 ${PROVENANCE_CLASS[provenance]} ${className ?? ''}`}
       title={PROVENANCE_HINT[provenance]}
     >
       {PROVENANCE_LABEL[provenance]}
@@ -72,9 +81,49 @@ export function statusLabel(status: string): string {
 }
 
 /**
- * The one way this panel renders a value it does not have. Never omit a field
- * silently: on a clinical site, a missing row reads as "nothing to say here",
- * which is a different claim from "we don't know".
+ * ClinicalTrials.gov's overallStatus values, worded the way the registry
+ * itself displays them. A Map rather than an object, so a stray value such as
+ * "constructor" can never resolve to something off the prototype.
+ */
+const REGISTRY_STATUS = new Map<string, string>([
+  ['RECRUITING', 'Recruiting'],
+  ['ACTIVE_NOT_RECRUITING', 'Active, not recruiting'],
+  ['NOT_YET_RECRUITING', 'Not yet recruiting'],
+  ['ENROLLING_BY_INVITATION', 'Enrolling by invitation'],
+  ['COMPLETED', 'Completed'],
+  ['SUSPENDED', 'Suspended'],
+  ['TERMINATED', 'Terminated'],
+  ['WITHDRAWN', 'Withdrawn'],
+  ['AVAILABLE', 'Available (expanded access)'],
+  ['NO_LONGER_AVAILABLE', 'No longer available'],
+  ['TEMPORARILY_NOT_AVAILABLE', 'Temporarily not available'],
+  ['APPROVED_FOR_MARKETING', 'Approved for marketing'],
+  ['UNKNOWN', 'Unknown status'],
+]);
+
+/**
+ * A registry status as a reader would say it. A value the registry adds later
+ * is title-cased as given ("SOME_NEW_STATUS" -> "Some New Status") rather than
+ * mapped onto a status we think is close: close is not the same claim.
+ */
+export function registryStatusLabel(raw: string): string {
+  const value = raw.trim();
+  const known = REGISTRY_STATUS.get(value.toUpperCase().replace(/[\s-]+/g, '_'));
+  if (known) return known;
+  return value
+    .toLowerCase()
+    .split(/[_\s]+/)
+    .filter((word) => word.length > 0)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
+/**
+ * The way the identifier list renders a value it does not have. There, a
+ * missing row would read as "nothing to say here", which is a different claim
+ * from "we don't know". (The "At a glance" rows work the other way round: a
+ * row with no value is left out, so the five-second read is never padded.)
+ * Never use this for an NCT or a PI — those have their own wording above.
  */
 export function NotAvailable({ note }: { note?: string }) {
   return (
@@ -133,12 +182,12 @@ export function DisclosureSection({
 
 export type MetadataRow = {
   label: string;
-  /** Pass <NotAvailable /> rather than null — the row must still be rendered. */
+  /** In the identifier list, pass <NotAvailable /> rather than leaving a row out. */
   value: ReactNode;
 };
 
 /**
- * The dense identifier block (NCT, protocol/IRB, phase, lead PI …). It is a
+ * A label/value block (identifiers, the ClinicalTrials.gov record). It is a
  * real <dl>, so the label/value pairing survives into the accessibility tree
  * instead of being a visual coincidence.
  */
@@ -155,24 +204,6 @@ export function MetadataSection({ rows }: { rows: MetadataRow[] }) {
   );
 }
 
-/**
- * What the panel needs in order to show a machine-written summary.
- *
- * Fed from Trial.summary / summarySource / summaryApproved /
- * summaryGeneratedAt via TrialDTO. /api/tree and /api/assistant send the text
- * only once summaryApproved is true, so an unreviewed summary never reaches
- * this block. Nothing writes summaries yet — the block renders once one has
- * been generated and approved.
- */
-export type GeneratedSummaryData = {
-  text: string;
-  /** Whatever produced it, as recorded (e.g. a model name). Never inferred. */
-  sourceLabel: string | null;
-  /** Mirrors Trial.summaryApproved exactly — we do not interpret it further. */
-  approved: boolean;
-  generatedAt: string | null;
-};
-
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 /**
@@ -185,68 +216,4 @@ export function formatIsoDate(value: string | null | undefined): string | null {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return null;
   return `${parsed.getUTCDate()} ${MONTHS[parsed.getUTCMonth()]} ${parsed.getUTCFullYear()}`;
-}
-
-/**
- * A generated summary is shown as a clearly-marked secondary reading of the
- * study, never as the study record itself: it is visually set apart, it says
- * what made it, it says whether a human has signed it off, and the text it was
- * drawn from stays one click away so the reader can check it.
- */
-export function GeneratedSummary({
-  summary,
-  sourceText,
-  sourceProvenance = 'unknown',
-}: {
-  summary: GeneratedSummaryData;
-  sourceText?: string | null;
-  sourceProvenance?: Provenance;
-}) {
-  const generatedOn = formatIsoDate(summary.generatedAt);
-
-  return (
-    <section className="rounded-xl border border-amber-300 bg-amber-50 p-4" aria-label="Generated summary">
-      <div className="flex flex-wrap items-center gap-2">
-        <ProvenanceBadge provenance="generated" />
-        {summary.sourceLabel ? (
-          <span className="text-xs text-amber-900">{summary.sourceLabel}</span>
-        ) : (
-          <span className="text-xs italic text-amber-800">Generator not recorded</span>
-        )}
-      </div>
-
-      <p className="mt-2.5 whitespace-pre-wrap break-words text-sm leading-relaxed text-slate-800">
-        {summary.text}
-      </p>
-
-      <p className="mt-3 text-xs font-semibold text-amber-900">
-        Generated summary — review the full protocol before acting on it.
-      </p>
-
-      <ul className="mt-1.5 space-y-0.5 text-[0.7rem] text-amber-900/80">
-        <li>
-          {summary.approved
-            ? 'Marked approved in TrialTree.'
-            : 'Not marked approved in TrialTree — no one has signed this off.'}
-        </li>
-        <li>{generatedOn ? `Generated ${generatedOn}.` : 'Generation date not recorded.'}</li>
-      </ul>
-
-      {sourceText ? (
-        <details className="group mt-3">
-          <summary className="flex min-h-[44px] cursor-pointer list-none items-center gap-2 text-xs font-semibold text-amber-900 underline decoration-amber-400 underline-offset-2 sm:min-h-0 [&::-webkit-details-marker]:hidden">
-            Show the stored text this was drawn from
-            <ProvenanceBadge provenance={sourceProvenance} />
-          </summary>
-          <p className="mt-2 whitespace-pre-wrap break-words border-t border-amber-200 pt-2 text-xs leading-relaxed text-slate-700">
-            {sourceText}
-          </p>
-        </details>
-      ) : (
-        <p className="mt-3 text-[0.7rem] text-amber-900/80">
-          No study text is stored for this trial, so the summary cannot be checked against a source here.
-        </p>
-      )}
-    </section>
-  );
 }

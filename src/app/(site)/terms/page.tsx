@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { SITE, mailto } from '@/lib/site';
 import { Callout, PageHeader, PageShell, Prose, Section } from '@/components/site/Prose';
 
 export const metadata: Metadata = {
@@ -60,8 +61,8 @@ export default function TermsPage() {
             <strong>Intended to say:</strong> TrialTree is a website that organizes information
             about genitourinary cancer clinical trials — prostate, bladder, and kidney — at
             participating cancer centers in Southern California, and presents it as a browsable
-            decision tree along with an assistant that suggests potentially relevant studies. These
-            terms would govern use of that website and anything published on it.
+            decision tree. These terms would govern use of that website and anything published on
+            it.
           </p>
           <p>
             TrialTree does not conduct clinical trials, does not enroll participants, is not a
@@ -133,11 +134,10 @@ export default function TermsPage() {
       <Section id="submitted-information" title="6. Information you submit" badge="Draft">
         <Prose>
           <p>
-            <strong>Intended to say:</strong> the trial submission form, the suggestions form, and
-            the trial finder are not designed to receive protected health information, and visitors
-            are asked not to send it. Submissions are reviewed by people before anything is
-            published; a submission does not publish a trial, and a message of support is not
-            published automatically.
+            <strong>Intended to say:</strong> the trial submission form and the suggestions form are
+            not designed to receive protected health information, and visitors are asked not to
+            send it. Submissions are reviewed by people before anything is published, and a
+            submission does not publish a trial.
           </p>
           <p>
             <strong>This section is incomplete.</strong> How submitted information is stored, how
@@ -196,22 +196,16 @@ export default function TermsPage() {
             <strong>Intended to say:</strong> this section will give the address for questions about
             these terms, corrections, and takedown requests.
           </p>
+          {/* The contact address is confirmed (SITE.contactEmail), so the old
+              "no contact provided" placeholder would now be untrue. */}
+          <p>
+            Until then, write to{' '}
+            <a href={mailto()} className="break-all">
+              {SITE.contactEmail}
+            </a>
+            , or use the <Link href="/suggestions">suggestions form</Link>.
+          </p>
         </Prose>
-        <div className="mt-4">
-          <Callout tone="placeholder" title="PLACEHOLDER — requires review before launch">
-            <p>
-              No contact email address, phone number, or mailing address has been provided, so none
-              is shown. Until one exists, the{' '}
-              <Link
-                href="/suggestions"
-                className="font-semibold text-blue-700 underline underline-offset-2 hover:text-blue-800"
-              >
-                suggestions form
-              </Link>{' '}
-              is the only route to reach us.
-            </p>
-          </Callout>
-        </div>
       </Section>
     </PageShell>
   );

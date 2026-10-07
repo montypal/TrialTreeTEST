@@ -16,10 +16,6 @@ type Props = {
   open: boolean;
   /** Close the drawer (backdrop tap, ✕ button, Escape). */
   onClose: () => void;
-  /** Curator shortcuts (review queue, NCT matches). Off on the public /explore
-      page: advertising a queue that can change live trial status to every
-      visitor is not the same as it merely being reachable by URL. */
-  showAdminLinks?: boolean;
 };
 
 /** From lg up the sidebar is always on screen — there's no drawer to close. */
@@ -57,7 +53,6 @@ export function Sidebar({
   onChange,
   open,
   onClose,
-  showAdminLinks = true,
 }: Props) {
   // Escape closes the drawer. Capture phase + preventDefault, so a trial panel
   // open underneath (which also closes on Escape) stays open on the same key.
@@ -99,11 +94,11 @@ export function Sidebar({
           <TreeMark />
           <div className="min-w-0 leading-tight">
             <div className="font-display text-lg font-extrabold tracking-tight text-slate-900">TrialTree</div>
-            <div className="truncate text-[0.62rem] font-semibold uppercase tracking-[0.18em] text-slate-400 lg:overflow-visible lg:whitespace-normal lg:tracking-[0.22em]">
+            <div className="truncate text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-slate-500 lg:overflow-visible lg:whitespace-normal lg:tracking-[0.22em]">
               GU Oncology · SoCal
             </div>
           </div>
-          <span className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-[0.65rem] font-semibold text-slate-600">
+          <span className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-[0.7rem] font-semibold text-slate-600">
             <span className={`h-1.5 w-1.5 rounded-full ${connected ? 'bg-emerald-500' : 'bg-slate-400'}`} />
             {connected ? 'Live' : 'Reconnecting'}
           </span>
@@ -112,7 +107,7 @@ export function Sidebar({
             type="button"
             onClick={onClose}
             aria-label="Close filters"
-            className="-mr-2 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 lg:hidden"
+            className="-mr-2 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 lg:hidden"
           >
             <svg
               width="18"
@@ -145,12 +140,15 @@ export function Sidebar({
             value={filter.search ?? ''}
             onChange={(e) => onChange({ ...filter, search: e.target.value })}
             placeholder="Search trial, NCT, drug, PI…"
-            className="w-full rounded-lg border border-slate-300 bg-white py-2.5 pl-9 pr-10 text-base text-slate-800 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-200 lg:py-2 lg:pr-8 lg:text-sm"
+            className="w-full rounded-lg border border-slate-300 bg-white py-2.5 pl-9 pr-11 text-base text-slate-800 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-200 lg:py-2 lg:pr-8 lg:text-sm"
           />
+          {/* A full 44px square on touch, flush with the input's right edge;
+              from lg up, a pointer, so it shrinks back to fit the shorter input. */}
           {filter.search ? (
             <button
+              type="button"
               onClick={() => onChange({ ...filter, search: '' })}
-              className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-2 text-slate-400 hover:text-slate-700 lg:p-1"
+              className="absolute right-0 top-1/2 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 lg:right-1 lg:h-7 lg:w-7"
               aria-label="Clear search"
             >
               ✕
@@ -158,18 +156,9 @@ export function Sidebar({
           ) : null}
         </div>
 
-        {/* AI finder */}
-        <a
-          href="/find"
-          className="group flex items-center justify-center gap-1.5 rounded-lg bg-gradient-to-r from-blue-600 to-violet-600 px-3 py-3 text-center text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lift lg:py-2.5"
-        >
-          <span>✨</span> Find a trial with AI
-          <span className="transition-transform duration-200 group-hover:translate-x-0.5">→</span>
-        </a>
-
         {/* Filters */}
         <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
-          <div className="text-[0.65rem] font-bold uppercase tracking-wider text-slate-400">Filter</div>
+          <div className="text-[0.7rem] font-bold uppercase tracking-wider text-slate-500">Filter</div>
           <div>
             <label className="block text-xs font-semibold text-slate-600">Cancer type</label>
             <select
@@ -219,7 +208,8 @@ export function Sidebar({
 
           {(filter.locationSlug || filter.pi || filter.search || filter.diseaseLabel) && (
             <button
-              className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm font-medium text-slate-600 transition-all duration-150 hover:border-slate-400 hover:bg-slate-100 active:scale-[0.98] lg:py-1.5"
+              type="button"
+              className="min-h-[44px] w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm font-medium text-slate-600 transition-all duration-150 hover:border-slate-400 hover:bg-slate-100 active:scale-[0.98] lg:min-h-0 lg:py-1.5"
               onClick={() => onChange({ locationSlug: null, pi: null, search: null, diseaseLabel: null })}
             >
               Reset filters
@@ -231,25 +221,6 @@ export function Sidebar({
           <div className="font-semibold uppercase tracking-wider text-slate-500">Last live update</div>
           <div className="mt-1 text-slate-700">{lastSummary ?? 'Waiting for changes…'}</div>
         </div>
-
-        {showAdminLinks && (
-          <div className="flex flex-col gap-2">
-            <a
-              href="/admin/review"
-              className="group flex items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-3 text-center text-sm font-semibold text-slate-700 transition-all duration-150 hover:-translate-y-0.5 hover:border-slate-400 hover:bg-slate-50 hover:shadow-sm lg:py-2"
-            >
-              Review queue
-              <span aria-hidden className="transition-transform duration-200 group-hover:translate-x-0.5">→</span>
-            </a>
-            <a
-              href="/admin/matches"
-              className="group flex items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-3 text-center text-sm font-semibold text-slate-700 transition-all duration-150 hover:-translate-y-0.5 hover:border-slate-400 hover:bg-slate-50 hover:shadow-sm lg:py-2"
-            >
-              NCT matches
-              <span aria-hidden className="transition-transform duration-200 group-hover:translate-x-0.5">→</span>
-            </a>
-          </div>
-        )}
       </aside>
     </>
   );

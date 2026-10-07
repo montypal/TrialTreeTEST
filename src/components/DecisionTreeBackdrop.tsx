@@ -91,30 +91,34 @@ export function DecisionTreeBackdrop({ className = '' }: { className?: string })
         </g>
       ))}
 
-      {/* Traveling pulses down a few branches */}
-      {PULSES.map((edgeIdx, i) => {
-        const d = edgePath(EDGES[edgeIdx]);
-        const color = byId(EDGES[edgeIdx][1]).c;
-        return (
-          <circle key={`p${i}`} r={3.6} fill="#ffffff" stroke={color} strokeWidth={1.6} opacity={0}>
-            <animateMotion
-              dur="3.4s"
-              begin={`${i * 0.8}s`}
-              repeatCount="indefinite"
-              path={d}
-              rotate="0"
-            />
-            <animate
-              attributeName="opacity"
-              values="0;1;1;0"
-              keyTimes="0;0.12;0.88;1"
-              dur="3.4s"
-              begin={`${i * 0.8}s`}
-              repeatCount="indefinite"
-            />
-          </circle>
-        );
-      })}
+      {/* Traveling pulses down a few branches. They are SMIL, which the
+          stylesheet's reduced-motion rules cannot pause, so a reader who asked
+          for less motion gets the group hidden instead. */}
+      <g className="motion-reduce:hidden">
+        {PULSES.map((edgeIdx, i) => {
+          const d = edgePath(EDGES[edgeIdx]);
+          const color = byId(EDGES[edgeIdx][1]).c;
+          return (
+            <circle key={`p${i}`} r={3.6} fill="#ffffff" stroke={color} strokeWidth={1.6} opacity={0}>
+              <animateMotion
+                dur="3.4s"
+                begin={`${i * 0.8}s`}
+                repeatCount="indefinite"
+                path={d}
+                rotate="0"
+              />
+              <animate
+                attributeName="opacity"
+                values="0;1;1;0"
+                keyTimes="0;0.12;0.88;1"
+                dur="3.4s"
+                begin={`${i * 0.8}s`}
+                repeatCount="indefinite"
+              />
+            </circle>
+          );
+        })}
+      </g>
     </svg>
   );
 }

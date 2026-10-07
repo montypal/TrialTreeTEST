@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import type { TreeData, TreeFilter, TrialDTO, DecisionNodeDTO } from '@/types';
+import type { TreeData, TreeFilter, TrialDTO, DecisionNodeDTO, RecruitmentStatus } from '@/types';
 import { centerBySlug } from '@/lib/locations';
 import { NODE, hueFor, type CancerHue } from '@/lib/cancerColors';
 
@@ -11,6 +11,13 @@ const DOT: Record<string, string> = {
   WAITLISTED: 'bg-amber-500',
   CLOSED: 'bg-slate-400',
   SUSPENDED: 'bg-rose-500',
+};
+// The dot is colour alone, so each site also says its status to a screen reader.
+const STATUS_WORD: Record<RecruitmentStatus, string> = {
+  RECRUITING: 'Recruiting',
+  WAITLISTED: 'Waitlist',
+  SUSPENDED: 'Suspended',
+  CLOSED: 'Closed',
 };
 const KIND_TAG: Record<string, string> = {
   DISEASE_TYPE: 'Cancer',
@@ -29,12 +36,16 @@ function matchesFilter(t: TrialDTO, filter: TreeFilter): boolean {
   }
   const q = filter.search?.trim().toLowerCase();
   if (q) {
+    // Kept in step with buildTree's trialMatchesFilter, so the outline and the
+    // map answer the same search with the same trials — drugs included.
     const hay = [
       t.title,
       t.nctId,
       t.shorthand,
       t.protocolNumber,
       t.principalInvestigator,
+      t.intervention,
+      t.mechanism,
       ...t.locations.map((l) => l.piName ?? ''),
     ]
       .filter(Boolean)
@@ -187,7 +198,7 @@ function Row({
       <span className={`inline-block w-3 shrink-0 text-slate-400 transition-transform ${open ? 'rotate-90' : ''}`}>
         ▸
       </span>
-      <span className={`text-[0.58rem] font-bold uppercase tracking-wider ${accent}`}>{tag}</span>
+      <span className={`text-[0.7rem] font-bold uppercase tracking-wider ${accent}`}>{tag}</span>
       {/* Wraps below lg so long labels stay readable; lg keeps the one-line truncate. */}
       <span className="min-w-0 break-words font-semibold text-slate-800 lg:truncate">{label}</span>
       <span className="ml-auto flex shrink-0 items-center gap-1.5 text-xs">
@@ -203,7 +214,15 @@ function Row({
   );
 }
 
+// A trial row answers what the map's card answers — what is given, how it
+// works, why the study exists — in the same order, so switching views never
+// changes what a reader can learn at a glance. The list can afford to wrap
+// where the card has to clamp; only the brief is held to two lines, so one long
+// sentence cannot turn a row into a paragraph.
 function TrialRow({ depth, trial, onClick }: { depth: number; trial: TrialDTO; onClick: () => void }) {
+  const intervention = trial.intervention?.trim() || null;
+  const mechanism = trial.mechanism?.trim() || null;
+  const brief = trial.summary?.trim() || null;
   return (
     <button
       onClick={onClick}
@@ -212,16 +231,36 @@ function TrialRow({ depth, trial, onClick }: { depth: number; trial: TrialDTO; o
     >
       <span className="mt-1 w-3 shrink-0 text-slate-300">•</span>
       <span className="min-w-0 flex-1">
-        <span className="flex flex-wrap items-center gap-x-2">
-          <span className="text-[0.58rem] font-bold uppercase text-blue-600">{trial.phase ?? 'Trial'}</span>
-          {trial.nctId && <span className="text-[0.58rem] text-slate-400">{trial.nctId}</span>}
+        {/* A missing phase or NCT is spelled out in the site-wide wording, never
+            replaced by a stand-in label or left off as if it were not asked. */}
+        <span className="flex flex-wrap items-center gap-x-2 text-[0.7rem]">
+          <span className={`font-bold uppercase ${trial.phase ? 'text-blue-600' : 'text-slate-500'}`}>
+            {trial.phase ?? 'Phase not listed'}
+          </span>
+          <span className={trial.nctId ? 'text-slate-600' : 'text-slate-500'}>
+            {trial.nctId ?? 'NCT number pending verification'}
+          </span>
         </span>
         <span className="block break-words text-sm leading-snug text-slate-700">{trial.title}</span>
-        <span className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[0.65rem] text-slate-500">
+        {intervention && (
+          <span className="mt-0.5 block break-words text-xs font-semibold leading-snug text-slate-800">
+            {intervention}
+          </span>
+        )}
+        {mechanism && (
+          <span className="block break-words text-[0.7rem] font-medium leading-snug text-slate-600">
+            {mechanism}
+          </span>
+        )}
+        {brief && (
+          <span className="mt-0.5 line-clamp-2 break-words text-xs leading-snug text-slate-600">{brief}</span>
+        )}
+        <span className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[0.7rem] text-slate-500">
           {trial.locations.map((l) => (
             <span key={l.locationSlug} className="inline-flex items-center gap-1">
-              <span className={`h-1.5 w-1.5 rounded-full ${DOT[l.status] ?? 'bg-slate-400'}`} />
+              <span aria-hidden className={`h-1.5 w-1.5 rounded-full ${DOT[l.status] ?? 'bg-slate-400'}`} />
               {centerBySlug(l.locationSlug)?.shortName ?? l.locationName}
+              <span className="sr-only">: {STATUS_WORD[l.status]}</span>
             </span>
           ))}
         </span>

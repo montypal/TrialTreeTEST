@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { MouseEvent, ReactNode } from 'react';
+import Link from 'next/link';
 import type { Node } from '@xyflow/react';
 import { TreeFlow } from '@/components/TreeFlow';
 import { OutlineBrowser } from '@/components/OutlineBrowser';
@@ -11,11 +12,14 @@ import { TrialDetail } from '@/components/TrialDetail';
 import { DecisionTreeBackdrop } from '@/components/DecisionTreeBackdrop';
 import { useTreeStream } from '@/components/useTreeStream';
 import { MORE_NODE_TYPE } from '@/lib/tree/buildTree';
+import { diseaseLabelFor } from '@/lib/tree/disease';
+import { mailto, HOME_EVENT } from '@/lib/site';
 import type { TreeFilter, TrialDTO } from '@/types';
 import { CANCERS, CARD, DOT, hueFor } from '@/lib/cancerColors';
 import { OrganIcon, organFor } from '@/components/icons/OrganIcon';
 
-// The browse experience behind both /explore (public) and /admin (legacy URL).
+// The browse experience behind the homepage, and behind /explore and /admin,
+// which render the same shell so older links keep working.
 //
 // Layout:
 //  • The header strip is always in-flow, at every breakpoint. It used to float
@@ -60,15 +64,19 @@ function historyState(): Record<string, unknown> {
 }
 
 type Props = {
-  /** True when a parent route (that is, /explore) already owns the viewport
-      height and has put the site header above us. */
+  /** True when a parent (ExploreShell) already owns the viewport height and
+      has put the site header above us. */
   embedded?: boolean;
-  /** A cancer chosen before arriving — the homepage's category cards link to
-      /explore?disease=<root label> — so the visitor lands inside that tree
-      rather than being asked the same question twice. Checked against the
-      real root nodes once the data arrives. */
+  /** A cancer chosen before arriving — a shared link or QR code can carry
+      ?disease=<root label> — so the visitor lands inside that tree rather
+      than being asked the same question twice. Checked against the real root
+      nodes once the data arrives. */
   initialDisease?: string | null;
 };
+
+/** Stand-ins for the cancer tiles until the tree arrives. Only the shape is
+    drawn — no label and no number — so nothing here can be mistaken for data. */
+const PLACEHOLDER_TILES = [0, 1, 2, 3];
 
 export function AdminClient({ embedded = false, initialDisease = null }: Props) {
   const [filter, setFilter] = useState<TreeFilter>({
@@ -168,6 +176,13 @@ export function AdminClient({ embedded = false, initialDisease = null }: Props) 
   const currentCrumb = crumbs[crumbs.length - 1];
   const parentCrumb = crumbs.length > 1 ? crumbs[crumbs.length - 2] : null;
 
+  // The open trial's disease in words, read off where it hangs in the tree, so
+  // the panel can say "Prostate Cancer › mCRPC" without storing it twice.
+  const selectedDisease = useMemo((): string | null => {
+    if (!selected || !data) return null;
+    return diseaseLabelFor(selected.decisionNodeId, data.decisionNodes)?.full ?? null;
+  }, [selected, data]);
+
   // Tablet breadcrumb is one scrollable line: keep the current step in view.
   // (From lg up it wraps instead, so there's nothing to scroll.)
   const crumbBarRef = useRef<HTMLElement>(null);
@@ -259,6 +274,18 @@ export function AdminClient({ embedded = false, initialDisease = null }: Props) 
   // plainer list of the same four cancers.
   const goHome = () => navigate({ entered: false, disease: null, focus: null });
 
+  // The header logo on "/" asks for the chooser (see HOME_EVENT). Read through a
+  // ref so the listener is attached once but always calls the current goHome.
+  // Already on the chooser, it does nothing: another history entry for the
+  // same screen would only make Back look broken.
+  const goHomeRef = useRef(goHome);
+  goHomeRef.current = entered ? goHome : () => undefined;
+  useEffect(() => {
+    const onHome = () => goHomeRef.current();
+    window.addEventListener(HOME_EVENT, onHome);
+    return () => window.removeEventListener(HOME_EVENT, onHome);
+  }, []);
+
   const goToCrumb = (id: string | null) => {
     if (id === null) goHome();
     else navigate({ entered: true, disease: filter.diseaseLabel ?? null, focus: id });
@@ -268,21 +295,26 @@ export function AdminClient({ embedded = false, initialDisease = null }: Props) 
   // must leave the tab order too — otherwise Tab walks into the sidebar and the
   // canvas controls underneath an opaque panel and the focus ring disappears.
   // `inert` is set through the DOM because React 18's types do not know it.
+  //
+  // The chooser is the homepage's first screen, so it does not wait for the
+  // data: until the tree arrives it stands with placeholder tiles, instead of
+  // showing a first-time visitor the browse shell and "Loading trials…". A deep
+  // link (entered from the start) still goes straight to its tree.
   const deepLinkInvalid = !!data && !!filter.diseaseLabel && !diseases.includes(filter.diseaseLabel);
-  const gated = !loading && !!data && (!entered || deepLinkInvalid);
+  const gated = !entered || deepLinkInvalid;
   const coveredRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     coveredRef.current?.toggleAttribute('inert', gated);
   }, [gated]);
 
-  // On /explore the site header already pays for the notch inset; paying for it
+  // Embedded, the site header already pays for the notch inset; paying for it
   // again here would just be a band of dead space.
   const barTopPad = embedded
     ? 'pt-2 sm:pt-3'
     : 'pt-[max(0.5rem,env(safe-area-inset-top,0px))] sm:pt-[max(0.75rem,env(safe-area-inset-top,0px))]';
 
-  // Standalone, the shell owns the viewport; embedded, /explore already does and
-  // this fills what is left. Either way the width is w-full rather than w-screen:
+  // Standalone, the shell owns the viewport; embedded, ExploreShell already does
+  // and this fills what is left. Either way the width is w-full rather than w-screen:
   // 100vw counts the scrollbar gutter, so on a desktop that shows one the shell
   // would be ~15px wider than the body and scroll sideways.
   return (
@@ -308,7 +340,6 @@ export function AdminClient({ embedded = false, initialDisease = null }: Props) 
         }}
         open={sidebarOpen}
         onClose={closeSidebar}
-        showAdminLinks={!embedded}
       />
       <main className="relative flex min-w-0 flex-1 flex-col">
         {/* Header strip: row 1 [Filters] [Map|Outline] … stats, row 2 the map
@@ -555,19 +586,21 @@ export function AdminClient({ embedded = false, initialDisease = null }: Props) 
           </div>
         </div>
 
-        {selected && <TrialDetail trial={selected} onClose={() => setSelected(null)} />}
+        {selected && (
+          <TrialDetail trial={selected} onClose={() => setSelected(null)} disease={selectedDisease} />
+        )}
 
         {/* Local-only real-time simulator (removed from production builds). */}
         <DevTools />
       </main>
       </div>
 
-      {/* Entry prompt: pick a cancer type to explore. Absolutely positioned
-          inside this shell rather than fixed to the window, so on /explore it
-          covers the browse area and leaves the site navigation reachable. It
-          sits below the site header's z-50 so the header's mobile menu, which
-          drops down over exactly this area, still paints on top of it.
-          Scrolls when it's taller than the shell; the backdrop stays pinned. */}
+      {/* Entry prompt — the homepage's first screen: pick a cancer type to
+          explore. Absolutely positioned inside this shell rather than fixed to
+          the window, so it covers the browse area and leaves the site
+          navigation reachable. It sits below the site header's z-50 so the
+          header's mobile menu, which drops down over exactly this area, still
+          paints on top of it. Scrolls when it's taller than the shell. */}
       {gated && (
         <div className="absolute inset-0 z-30 overflow-y-auto overscroll-contain bg-[#f6f7f9] text-center">
           <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -576,72 +609,158 @@ export function AdminClient({ embedded = false, initialDisease = null }: Props) 
             </div>
             <DecisionTreeBackdrop className="pointer-events-none absolute inset-0 z-0 h-full w-full opacity-[0.55]" />
           </div>
-          <div className="relative z-10 flex min-h-full flex-col items-center justify-center px-4 py-10 pb-[calc(2.5rem_+_env(safe-area-inset-bottom,0px))] pl-[max(1rem,env(safe-area-inset-left,0px))] pr-[max(1rem,env(safe-area-inset-right,0px))] pt-10 lg:p-6">
-            <div className="w-full animate-fade-up lg:w-auto">
-              <div className="text-[0.7rem] font-semibold uppercase tracking-[0.28em] text-blue-600">
-                GU Oncology Trial Map
-              </div>
-              <h1 className="mt-2 font-display text-3xl font-extrabold tracking-tight text-gradient sm:text-4xl lg:text-5xl">
-                Welcome to TrialTree
-              </h1>
-              <p className="mt-3 text-slate-500">Which cancer would you like to explore?</p>
 
-              {/* Phones: one column of compact rows. sm–lg: two columns.
-                  lg: a row of tall cards. */}
-              <div className="mx-auto mt-6 grid w-full max-w-md grid-cols-1 gap-3 sm:max-w-2xl sm:grid-cols-2 lg:mt-8 lg:flex lg:w-auto lg:max-w-none lg:flex-wrap lg:justify-center lg:gap-4">
-                {diseases.map((d) => {
-                  const s = CARD[hueFor(d)];
-                  const st = diseaseStats.get(d);
-                  return (
-                    <button
-                      key={d}
-                      type="button"
-                      onClick={() => chooseCancer(d)}
-                      className={`group relative flex w-full items-center gap-4 overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br ${s.grad} p-4 text-left shadow-card transition-all duration-300 hover:-translate-y-1.5 ${s.hover} hover:shadow-lift lg:block lg:w-60 lg:p-6`}
-                    >
-                      <span className={`absolute inset-x-0 top-0 h-1 ${s.bar}`} />
-                      {/* The organ, drawn — not the cancer's initial. Decorative:
-                          the label beside it carries the name. */}
-                      <span
-                        className={`inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl ${s.badge} lg:h-16 lg:w-16`}
+          {/* Budgeted for a 360×640 phone: under the 56px header, the question,
+              the counts and every cancer row fit in the first screen with no
+              scrolling, and the footer line follows them. The question and the
+              tiles share one centred group; the footer sits under it, at the
+              bottom of the screen whenever there is room to spare. */}
+          <div className="relative z-10 flex min-h-full flex-col items-center pb-[max(1rem,env(safe-area-inset-bottom,0px))] pl-[max(1rem,env(safe-area-inset-left,0px))] pr-[max(1rem,env(safe-area-inset-right,0px))] pt-5 sm:pl-[max(1.5rem,env(safe-area-inset-left,0px))] sm:pr-[max(1.5rem,env(safe-area-inset-right,0px))] sm:pt-8 lg:pb-6 lg:pt-10">
+            <div className="flex w-full max-w-md flex-1 animate-fade-up flex-col justify-center motion-reduce:animate-none sm:max-w-2xl lg:max-w-5xl">
+              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.24em] text-blue-700">
+                GU Oncology Trial Map
+              </p>
+              <h1 className="mt-2 text-balance font-display text-2xl font-extrabold leading-tight tracking-tight text-slate-900 sm:text-3xl lg:text-4xl">
+                What cancer would you like to explore?
+              </h1>
+              {/* Counted from the loaded tree, never typed in: a stale figure on
+                  a trial site is a clinical problem, not a copy problem. A
+                  center counts once it has at least one trial here. */}
+              <p className="mt-2 text-sm text-slate-500 sm:mt-3" aria-live="polite">
+                {stats ? (
+                  <>
+                    <span className="font-semibold text-slate-700">{stats.total}</span>{' '}
+                    {stats.total === 1 ? 'trial' : 'trials'}
+                    <span aria-hidden className="mx-1.5 text-slate-300">
+                      ·
+                    </span>
+                    <span className="sr-only">, </span>
+                    <span className="font-semibold text-slate-700">{stats.centers}</span>{' '}
+                    {stats.centers === 1 ? 'center' : 'centers'}
+                  </>
+                ) : (
+                  'Loading trials…'
+                )}
+              </p>
+
+              {/* Phones: one column of compact rows. sm–lg: two columns of rows.
+                  lg up: one row of tall cards, centred, however many there are. */}
+              <div className="mt-4 grid w-full grid-cols-1 gap-2 text-left sm:mt-6 sm:grid-cols-2 sm:gap-3 lg:mt-8 lg:flex lg:flex-wrap lg:justify-center lg:gap-4">
+                {data
+                  ? diseases.map((d) => {
+                      const s = CARD[hueFor(d)];
+                      const st = diseaseStats.get(d);
+                      return (
+                        // focus-visible:rounded-2xl: the global focus style
+                        // rounds every focused element to 6px, which would
+                        // square off the card's corners under the ring.
+                        <button
+                          key={d}
+                          type="button"
+                          onClick={() => chooseCancer(d)}
+                          className={`group relative flex min-h-[4rem] w-full items-center gap-3 overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br ${s.grad} py-2.5 pl-4 pr-3 text-left shadow-card transition duration-200 ease-out ${s.hover} hover:shadow-lift focus-visible:rounded-2xl active:shadow-card motion-safe:hover:-translate-y-0.5 motion-safe:active:translate-y-0 motion-safe:active:scale-[0.98] sm:gap-4 sm:p-4 sm:pl-5 lg:w-[13.5rem] lg:flex-col lg:items-start lg:gap-0 lg:p-5 xl:w-60`}
+                        >
+                          {/* The cancer's ribbon colour: down the left edge of a
+                              row, across the top of a tall card. */}
+                          <span
+                            aria-hidden
+                            className={`absolute inset-y-0 left-0 w-1 ${s.bar} lg:bottom-auto lg:right-0 lg:h-1 lg:w-auto`}
+                          />
+                          {/* The organ, drawn — not the cancer's initial. Decorative:
+                              the label beside it carries the name. */}
+                          <span
+                            aria-hidden
+                            className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${s.badge} sm:h-12 sm:w-12 lg:h-16 lg:w-16 lg:rounded-2xl`}
+                          >
+                            <OrganIcon
+                              name={organFor(d)}
+                              hue={hueFor(d)}
+                              className="h-8 w-8 sm:h-9 sm:w-9 lg:h-12 lg:w-12"
+                            />
+                          </span>
+                          {/* flex-1 in a tall card pushes "Explore" to the bottom,
+                              so it lines up across cards whose names wrap
+                              differently. */}
+                          <span className="min-w-0 flex-1 lg:mt-4 lg:w-full">
+                            <span className="block font-display text-[0.9375rem] font-bold leading-snug tracking-tight text-slate-900 sm:text-base lg:text-lg">
+                              {d}
+                            </span>
+                            <span className="mt-0.5 block text-[0.8125rem] leading-5 text-slate-500 sm:text-sm lg:mt-1">
+                              {st ? (
+                                <>
+                                  <span className="font-semibold text-slate-700">{st.total}</span>{' '}
+                                  {st.total === 1 ? 'trial' : 'trials'}
+                                  {st.rec > 0 && <span className="text-emerald-700"> · {st.rec} recruiting</span>}
+                                </>
+                              ) : (
+                                'View trials'
+                              )}
+                            </span>
+                          </span>
+                          <span
+                            aria-hidden
+                            className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-slate-400 transition-colors duration-200 group-hover:text-slate-700 lg:mt-4 lg:text-slate-600"
+                          >
+                            <span className="hidden lg:inline">Explore</span>
+                            <span className="transition-transform duration-200 motion-safe:group-hover:translate-x-1">
+                              →
+                            </span>
+                          </span>
+                        </button>
+                      );
+                    })
+                  : PLACEHOLDER_TILES.map((i) => (
+                      <div
+                        key={i}
                         aria-hidden
+                        className="flex min-h-[4rem] w-full items-center gap-3 rounded-2xl border border-slate-200/80 bg-white/70 py-2.5 pl-4 pr-3 sm:gap-4 sm:p-4 sm:pl-5 lg:min-h-[14rem] lg:w-[13.5rem] lg:flex-col lg:items-start lg:gap-0 lg:p-5 xl:w-60"
                       >
-                        <OrganIcon name={organFor(d)} hue={hueFor(d)} className="h-11 w-11 lg:h-12 lg:w-12" />
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <div className="font-display text-lg font-bold leading-tight text-slate-900 lg:mt-3">
-                          {d}
-                        </div>
-                        <div className="mt-0.5 text-sm text-slate-500 lg:mt-1">
-                          {st ? (
-                            <>
-                              <span className="font-semibold text-slate-700">{st.total}</span> trials
-                              {st.rec > 0 && <span className="text-emerald-600"> · {st.rec} recruiting</span>}
-                            </>
-                          ) : (
-                            'View trials'
-                          )}
-                        </div>
-                      </div>
-                      <div className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-slate-700 lg:mt-4">
-                        <span className="hidden lg:inline">Explore</span>
-                        <span className="transition-transform duration-300 group-hover:translate-x-1" aria-hidden>
-                          →
+                        <span className="h-11 w-11 shrink-0 animate-pulse rounded-xl bg-slate-200/80 motion-reduce:animate-none sm:h-12 sm:w-12 lg:h-16 lg:w-16 lg:rounded-2xl" />
+                        <span className="min-w-0 flex-1 space-y-2 lg:mt-4 lg:w-full">
+                          <span className="block h-3.5 w-3/5 animate-pulse rounded bg-slate-200/80 motion-reduce:animate-none" />
+                          <span className="block h-3 w-2/5 animate-pulse rounded bg-slate-200/60 motion-reduce:animate-none" />
                         </span>
                       </div>
-                    </button>
-                  );
-                })}
+                    ))}
               </div>
 
               <button
                 type="button"
                 onClick={() => chooseCancer(null)}
-                className="mt-3 px-3 py-3 text-sm font-semibold text-slate-500 transition hover:text-slate-900 lg:mt-7 lg:p-0"
+                className="group mt-1 inline-flex h-11 items-center gap-1 self-center rounded-xl px-4 text-sm font-semibold text-slate-600 transition-colors hover:bg-white/70 hover:text-slate-900 focus-visible:rounded-xl sm:mt-3 lg:mt-5"
               >
-                Or view all GU cancers →
+                Or view all GU cancers
+                <span aria-hidden className="transition-transform duration-200 motion-safe:group-hover:translate-x-0.5">
+                  →
+                </span>
               </button>
             </div>
+
+            {/* One quiet line, not a disclaimer block. The links are inline, so
+                each one's tap area is stretched to 44px by an invisible
+                ::after rather than by padding that would push the line apart
+                and draw an oversized focus ring. */}
+            <p className="mt-3 max-w-md text-balance text-xs leading-5 text-slate-500 sm:mt-6 sm:max-w-xl">
+              <span className="font-semibold text-slate-600">Decision support only.</span> Confirm eligibility
+              with the study team.{' '}
+              <span className="whitespace-nowrap">
+                <Link
+                  href="/terms"
+                  className="relative font-semibold text-slate-600 underline decoration-slate-300 underline-offset-2 transition-colors after:absolute after:-inset-x-2 after:-inset-y-4 after:content-[''] hover:text-slate-900 hover:decoration-slate-500"
+                >
+                  Terms
+                </Link>
+                <span aria-hidden className="mx-2 text-slate-300">
+                  ·
+                </span>
+                <a
+                  href={mailto()}
+                  className="relative font-semibold text-slate-600 underline decoration-slate-300 underline-offset-2 transition-colors after:absolute after:-inset-x-2 after:-inset-y-4 after:content-[''] hover:text-slate-900 hover:decoration-slate-500"
+                >
+                  Contact
+                </a>
+              </span>
+            </p>
           </div>
         </div>
       )}

@@ -3,7 +3,8 @@ import Link from 'next/link';
 import { CENTERS } from '@/lib/locations';
 import { mappedCenterSlugs } from '@/lib/tree/curatedStats';
 import { CANCERS, CHIP, DOT } from '@/lib/cancerColors';
-import { Callout, PageHeader, PageShell, Pending, Prose, Section } from '@/components/site/Prose';
+import { SITE, mailto } from '@/lib/site';
+import { Callout, PageHeader, PageShell, Prose, Section } from '@/components/site/Prose';
 
 export const metadata: Metadata = {
   title: 'About',
@@ -12,46 +13,10 @@ export const metadata: Metadata = {
 };
 
 // ---------------------------------------------------------------------------
-// Founder profiles.
-//
-// The component is data-driven with one slot per kind of fact, because we have
-// none of those facts verified yet: every slot renders an explicit "to be
-// provided" marker rather than a guess. Filling this page in later is a matter
-// of replacing nulls in FOUNDERS — no markup changes.
-//
-// It lives in this file, unexported, because Next rejects any export from a
-// page.tsx that is not a route field ("is not a valid Page export field"). Lift
-// it into src/components/site/ the moment a second page needs it.
+// Founders are names only, read from SITE.founders. No role, degree, bio or
+// affiliation is shown for anyone until they have confirmed it themselves —
+// on a clinical site an invented credential is worse than a short card.
 // ---------------------------------------------------------------------------
-
-type FounderProfileData = {
-  name: string;
-  /** Role/title at TrialTree. Null until confirmed. */
-  role: string | null;
-  bio: string | null;
-  education: string[] | null;
-  researchInterests: string[] | null;
-  publications: string[] | null;
-};
-
-const FOUNDERS: FounderProfileData[] = [
-  {
-    name: 'Charlotte Moore',
-    role: null,
-    bio: null,
-    education: null,
-    researchInterests: null,
-    publications: null,
-  },
-  {
-    name: 'Aarav Pal',
-    role: null,
-    bio: null,
-    education: null,
-    researchInterests: null,
-    publications: null,
-  },
-];
 
 function initialsFor(name: string): string {
   return name
@@ -62,73 +27,11 @@ function initialsFor(name: string): string {
     .join('');
 }
 
-function ProfileSlot({ heading, items }: { heading: string; items: string[] | null }) {
-  return (
-    <div>
-      <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500">{heading}</h4>
-      {items && items.length > 0 ? (
-        <ul className="mt-1.5 list-disc space-y-1 pl-5 text-sm leading-relaxed text-slate-600">
-          {items.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
-      ) : (
-        <div className="mt-1.5">
-          <Pending />
-        </div>
-      )}
-    </div>
-  );
-}
-
-function FounderProfile({ founder }: { founder: FounderProfileData }) {
-  return (
-    <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-card">
-      <div className="flex items-center gap-3">
-        {/* Initials rather than a photograph — we have no image, and a stock
-            portrait on a founder card would be a fabrication. */}
-        <span
-          aria-hidden
-          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-100 font-display text-base font-bold text-slate-500"
-        >
-          {initialsFor(founder.name)}
-        </span>
-        <div className="min-w-0">
-          <h3 className="font-display text-lg font-bold tracking-tight text-slate-900">
-            {founder.name}
-          </h3>
-          {founder.role ? (
-            <p className="text-sm font-medium text-slate-500">{founder.role}</p>
-          ) : (
-            <div className="mt-1">
-              <Pending label="Role — to be provided" />
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="mt-4">
-        <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500">Biography</h4>
-        {founder.bio ? (
-          <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{founder.bio}</p>
-        ) : (
-          <div className="mt-1.5">
-            <Pending />
-          </div>
-        )}
-      </div>
-
-      <div className="mt-4 space-y-4">
-        <ProfileSlot heading="Education" items={founder.education} />
-        <ProfileSlot heading="Research interests" items={founder.researchInterests} />
-        <ProfileSlot heading="Publications" items={founder.publications} />
-      </div>
-    </article>
-  );
-}
-
 export default function AboutPage() {
   const mappedCenters = mappedCenterSlugs();
+  // Read once into a local so the null check narrows it for the JSX below.
+  const instagram = SITE.instagram;
+
   return (
     <PageShell wide>
       <PageHeader
@@ -194,9 +97,10 @@ export default function AboutPage() {
             locally but hard to pick out of a national registry search.
           </p>
           <p>
-            Every entry is curated by hand. Clinicians at participating sites can send a change by
-            text message, and the boards in this site update from that same curated record, so a
-            closure or a reopening can be reflected here as soon as it is confirmed.
+            Every entry is curated by hand, and NCT numbers are matched to each study&rsquo;s
+            record on ClinicalTrials.gov. Until a listing&rsquo;s NCT number has been confirmed, it
+            reads &ldquo;NCT number pending verification&rdquo; rather than showing a number we are
+            not sure of.
           </p>
           <p>
             This is a description of method, not a guarantee. Curated information can still be
@@ -217,9 +121,8 @@ export default function AboutPage() {
         </Callout>
         <Prose className="mt-4">
           <p>
-            There are also no user accounts. The trial finder asks you to describe a clinical
-            situation without identifiers — no names, dates of birth, medical record numbers, or
-            addresses — and nothing on this site is designed to hold a patient record.
+            There are also no user accounts, and nothing on this site is designed to hold a patient
+            record.
           </p>
         </Prose>
       </Section>
@@ -257,27 +160,26 @@ export default function AboutPage() {
       </Section>
 
       <Section title="Founders">
-        <Prose>
-          <p>
-            TrialTree is built and maintained by the people below. Their profiles are intentionally
-            incomplete: nothing is published here until it has been confirmed by the person it
-            describes.
-          </p>
-        </Prose>
-        <div className="mt-5 grid gap-4 sm:grid-cols-2">
-          {FOUNDERS.map((founder) => (
-            <FounderProfile key={founder.name} founder={founder} />
+        <ul className="grid gap-3 sm:grid-cols-2">
+          {SITE.founders.map((name) => (
+            <li
+              key={name}
+              className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-card"
+            >
+              {/* Initials rather than a photograph — we have no image, and a
+                  stock portrait on a founder card would be a fabrication. */}
+              <span
+                aria-hidden
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-slate-100 font-display text-sm font-bold text-slate-500"
+              >
+                {initialsFor(name)}
+              </span>
+              <h3 className="min-w-0 break-words font-display text-base font-bold tracking-tight text-slate-900">
+                {name}
+              </h3>
+            </li>
           ))}
-        </div>
-        <div className="mt-4">
-          <Callout tone="placeholder" title="PLACEHOLDER — requires review before launch">
-            <p>
-              Biographies, education, research interests, and publications for both founders are
-              awaiting confirmed copy. No credential, degree, affiliation, title, or publication has
-              been written in on their behalf.
-            </p>
-          </Callout>
-        </div>
+        </ul>
       </Section>
 
       <Section title="Working with us">
@@ -288,9 +190,30 @@ export default function AboutPage() {
             <Link href="/submit">trial submission form</Link>. If you have spotted something missing
             or wrong on a listing, the lighter-weight{' '}
             <Link href="/suggestions">suggestions form</Link> is the faster route. Support for the
-            site&rsquo;s upkeep and printed materials goes through{' '}
-            <Link href="/donate">donations</Link>.
+            site&rsquo;s upkeep goes through <Link href="/donate">donations</Link>.
           </p>
+        </Prose>
+      </Section>
+
+      <Section id="contact" title="Contact">
+        <Prose>
+          <p>
+            Email us at{' '}
+            {/* break-all: one unbreakable word that must wrap, not overflow, on
+                a narrow phone. */}
+            <a href={mailto()} className="break-all">
+              {SITE.contactEmail}
+            </a>
+            .
+          </p>
+          {instagram ? (
+            <p>
+              Follow us on Instagram:{' '}
+              <a href={instagram.url} target="_blank" rel="noreferrer">
+                {instagram.handle}
+              </a>
+            </p>
+          ) : null}
         </Prose>
       </Section>
     </PageShell>

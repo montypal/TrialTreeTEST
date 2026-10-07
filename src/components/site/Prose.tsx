@@ -127,7 +127,11 @@ const CALLOUT_TONE: Record<CalloutTone, { box: string; heading: string; body: st
   },
 };
 
-/** Boxed note. `placeholder` is the house style for "we do not know this yet". */
+/**
+ * Boxed note. `placeholder` is kept only for the draft Terms, where a clause is
+ * deliberately blank until counsel writes it; elsewhere an unknown renders as
+ * nothing rather than as a marked gap.
+ */
 export function Callout({
   tone = 'info',
   title,
@@ -147,19 +151,5 @@ export function Callout({
         {children}
       </div>
     </div>
-  );
-}
-
-/**
- * Inline "we do not have this value yet" marker. Used wherever inventing a
- * plausible value would be worse than showing a gap — founder credentials,
- * legal identity, contact details.
- */
-export function Pending({ label = 'To be provided' }: { label?: string }) {
-  return (
-    <span className="inline-flex items-center gap-1.5 rounded-md border border-dashed border-slate-300 bg-slate-50 px-2 py-1 text-xs font-medium text-slate-500">
-      <span aria-hidden>◻</span>
-      {label}
-    </span>
   );
 }

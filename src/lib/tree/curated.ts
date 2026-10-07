@@ -13,6 +13,9 @@ import { CURATED_TREES, type CuratedNode, type CuratedTrial } from './curatedDat
 //
 // Known limitation: a reload also resets any status a clinician changed by
 // text/email since the last reload. (SMS isn't live yet; revisit before it is.)
+// It also drops what the enrichment job added (auto-matched NCTs, registry
+// facts, proposed matches), which is why /api/dev/curate re-runs that job
+// (src/lib/ctgov/enrich.ts) straight after every reload.
 // ---------------------------------------------------------------------------
 
 export type ReloadSummary = {
@@ -82,6 +85,40 @@ export async function reloadCuratedData(prisma: PrismaClient): Promise<ReloadSum
               eligibilityCriteria: trialText(t),
               decisionNodeId: created.id,
               source: 'CURATED',
+              // Card facts, each sourced in curatedData.ts (NCI Thesaurus or the
+              // ClinicalTrials.gov record). Copied as written, never generated.
+              intervention: t.intervention ?? null,
+              mechanism: t.mechanism ?? null,
+              mechanismSources: t.mechanismSources ?? [],
+              // The one-sentence brief is sourced text committed to the curated
+              // file, so it is approved on load. It is paraphrased from the
+              // ClinicalTrials.gov record when the trial has an NCT, and from
+              // the center's own list when it does not.
+              summary: t.brief ?? null,
+              summarySource: t.brief ? (t.nct ? 'CTGOV' : 'CURATED') : null,
+              summaryApproved: Boolean(t.brief),
+              summaryGeneratedAt: null,
+              // An NCT in the curated file came from a center's list or a
+              // curator's lookup; the enrichment job marks its own AUTO_MATCHED.
+              nctSource: t.nct ? 'CURATED' : null,
+              // A curator's veto of a ClinicalTrials.gov record for this trial.
+              // Stored as a REJECTED candidate, which the enrichment job never
+              // links automatically or proposes again; recreated on every reload.
+              ...(t.rejectNct && t.rejectNct.length > 0
+                ? {
+                    nctMatchCandidates: {
+                      // Upper-cased and de-duplicated: the registry's ids are
+                      // upper case, and a repeat would trip the unique index
+                      // and roll back the whole reload.
+                      create: Array.from(new Set(t.rejectNct.map((n) => n.trim().toUpperCase()))).map((nctId) => ({
+                        nctId,
+                        candidateTitle: 'Rejected by a curator in curatedData.ts',
+                        confidence: 0,
+                        status: 'REJECTED' as const,
+                      })),
+                    },
+                  }
+                : {}),
               locations: {
                 create: t.sites.map((s) => ({
                   locationId: locationIds[s.center],
@@ -109,8 +146,8 @@ export async function reloadCuratedData(prisma: PrismaClient): Promise<ReloadSum
       }
       return summary;
     },
-    // ~60 trials and ~70 site links — well inside this, but the default 5s is
-    // too tight for a cold connection.
+    // ~95 trials and their site links — well inside this, but the default 5s
+    // is too tight for a cold connection.
     { timeout: 60_000, maxWait: 10_000 },
   );
 }

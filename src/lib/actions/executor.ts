@@ -53,8 +53,8 @@ export async function ingestAction(input: IngestInput): Promise<IngestResult> {
       status: 'PENDING_REVIEW',
       message:
         action.action === 'UNKNOWN'
-          ? 'Message did not map to a supported action — queued for review.'
-          : `Confidence ${Math.round(action.confidence_score)}% is below the ${threshold}% auto-apply threshold — queued for admin approval.`,
+          ? 'Message did not map to a supported action — not applied. Please resend it naming the trial and the site.'
+          : `Confidence ${Math.round(action.confidence_score)}% is below the ${threshold}% auto-apply threshold — not applied. Please resend it naming the trial (NCT or protocol number) and the site.`,
     };
   }
 

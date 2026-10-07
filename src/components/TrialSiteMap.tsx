@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import type { RecruitmentStatus, TrialLocationDTO } from '@/types';
 import { CENTERS, centerBySlug } from '@/lib/locations';
-import { NotAvailable, statusLabel } from '@/components/trial/MetadataSection';
+import { PI_UNAVAILABLE, statusLabel } from '@/components/trial/MetadataSection';
 
 // ---------------------------------------------------------------------------
 // "Where this study is running" — the geographic panel inside the trial
@@ -76,7 +76,8 @@ export function TrialSiteMap({ locations, mapSlot, className }: TrialSiteMapProp
       {total === 0 ? (
         <p className="mt-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-500">
           No sites are recorded for this study in TrialTree. That means none are held here — not that
-          the study is running nowhere. Check the ClinicalTrials.gov record below.
+          the study is running nowhere. The ClinicalTrials.gov record, where one is linked below, is
+          the fuller source.
         </p>
       ) : (
         <ul className="mt-2 space-y-2">
@@ -87,8 +88,8 @@ export function TrialSiteMap({ locations, mapSlot, className }: TrialSiteMapProp
       )}
 
       <p className="mt-2 text-[0.7rem] leading-relaxed text-slate-500">
-        Status and investigator are held per site. Open-slot counts appear only for sites that report
-        one; no count means none is recorded.
+        Status and Principal Investigator are held per site. Open-slot counts appear only for sites
+        that report one; no count means none is recorded.
       </p>
     </section>
   );
@@ -99,6 +100,9 @@ function SiteCard({ location }: { location: TrialLocationDTO }) {
   // Search by name, not by coordinate — we have a real institution name and no
   // real position, and a search is the honest version of that.
   const mapsHref = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location.locationName)}`;
+  // The center's own list names its PI (surname only, as given). No title or
+  // initial is added: anything not on the list would be invented.
+  const pi = location.piName?.trim() || null;
 
   return (
     <li className="rounded-xl border border-slate-200 bg-white p-3">
@@ -112,20 +116,24 @@ function SiteCard({ location }: { location: TrialLocationDTO }) {
         <span className={`pill pill-${location.status} shrink-0`}>{statusLabel(location.status)}</span>
       </div>
 
-      <dl className="mt-2 space-y-1 text-xs">
-        <div className="flex flex-wrap gap-x-1.5">
-          <dt className="text-slate-500">Site investigator:</dt>
-          <dd className="m-0 min-w-0 break-words text-slate-700">
-            {location.piName ?? <NotAvailable note="none recorded for this site" />}
-          </dd>
-        </div>
-        {location.slotsOpen !== null && (
-          <div className="flex flex-wrap gap-x-1.5">
-            <dt className="text-slate-500">Open slots:</dt>
-            <dd className="m-0 text-slate-700">{location.slotsOpen}</dd>
-          </div>
+      {/* A missing PI is said in full rather than as a label with a blank,
+          so "Principal Investigator: —" can never read as a name. */}
+      <p className="mt-2 break-words text-xs">
+        {pi ? (
+          <>
+            <span className="text-slate-500">Principal Investigator: </span>
+            <span className="font-medium text-slate-700">{pi}</span>
+          </>
+        ) : (
+          <span className="italic text-slate-500">{PI_UNAVAILABLE}</span>
         )}
-      </dl>
+      </p>
+      {location.slotsOpen !== null && (
+        <dl className="mt-1 flex flex-wrap gap-x-1.5 text-xs">
+          <dt className="text-slate-500">Open slots:</dt>
+          <dd className="m-0 text-slate-700">{location.slotsOpen}</dd>
+        </dl>
+      )}
 
       <a
         href={mapsHref}
@@ -148,19 +156,9 @@ function SiteCard({ location }: { location: TrialLocationDTO }) {
 function MapPlaceholder({ statusBySlug }: { statusBySlug: Map<string, RecruitmentStatus> }) {
   return (
     <div>
-      <div className="border-b border-dashed border-slate-300 bg-slate-50 px-4 py-3">
-        <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
-          Map view — placeholder, requires review before launch
-        </p>
-        <p className="mt-1 text-xs leading-relaxed text-slate-500">
-          No mapping provider is configured and TrialTree holds no coordinates for its centers, so no
-          map is drawn here. The sites listed below are the complete set held for this study.
-        </p>
-      </div>
-
       <div className="px-4 py-3">
-        <p className="text-[0.62rem] font-semibold uppercase tracking-wide text-slate-500">
-          Southern California network
+        <p className="text-[0.7rem] font-semibold uppercase tracking-wide text-slate-500">
+          Centers TrialTree lists
         </p>
         <ul className="mt-2 flex flex-wrap gap-1.5">
           {CENTERS.map((c) => {
