@@ -20,7 +20,7 @@ export const SITE = {
    */
   instagram: null as SocialAccount | null,
   /** Names exactly as given. No titles, degrees or affiliations until confirmed. */
-  founders: ['Charlotte Moore', 'Aarav Pal'] as readonly string[],
+  founders: ['Charlotte Mar', 'Aarav Pal'] as readonly string[],
 } as const;
 
 /**
